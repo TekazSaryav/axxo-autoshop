@@ -20,24 +20,39 @@ export async function setupBot() {
         console.warn('⚠️ Could not set menu button (may require domain verification or valid https):', err.message);
     }
 }
+// Helper to detect if user is French speaking
+function isFrenchUser(ctx) {
+    const code = ctx.from?.language_code?.toLowerCase() || '';
+    return code.startsWith('fr');
+}
 // /start command
 bot.command('start', async (ctx) => {
-    const userName = ctx.from?.first_name || 'Cher client';
+    const isFr = isFrenchUser(ctx);
+    const userName = ctx.from?.first_name || (isFr ? 'Cher client' : 'Customer');
     const keyboard = new InlineKeyboard()
-        .webApp('🚀 Ouvrir la Boutique', config.miniAppUrl)
+        .webApp(isFr ? '🚀 Ouvrir la Boutique' : '🚀 Open Shop', config.miniAppUrl)
         .row()
-        .url('🌐 Site Web (tekaz.xyz)', `https://${config.shopDomain}`)
+        .url(isFr ? '🌐 Site Web (tekaz.xyz)' : '🌐 Website (tekaz.xyz)', `https://${config.shopDomain}`)
         .row()
-        .text('📦 Mes Commandes', 'cmd_orders')
-        .text('💬 Support', 'cmd_support');
-    const welcomeMessage = `
+        .text(isFr ? '📦 Mes Commandes' : '📦 My Orders', 'cmd_orders')
+        .text(isFr ? '💬 Support' : '💬 Support', 'cmd_support');
+    const welcomeMessage = isFr
+        ? `
 ⚡ *Bienvenue sur Tekaz Market, ${userName} !*
 
 Accédez à notre catalogue complet de comptes, abonnements, licences et boosts avec livraison instantanée 24/7.
 
 🛒 *Une vraie application intégrée :*
 Cliquez sur le bouton ci-dessous pour ouvrir l'interface interactive directement dans Telegram (avec panier, filtres et paiement rapide).
-  `.trim();
+    `.trim()
+        : `
+⚡ *Welcome to Tekaz Market, ${userName}!*
+
+Access our full catalog of accounts, subscriptions, software licenses and boosts with instant 24/7 delivery.
+
+🛒 *Full Native Mini App:*
+Click the button below to launch the store directly inside Telegram (with cart, instant search and secure checkout).
+    `.trim();
     await ctx.reply(welcomeMessage, {
         parse_mode: 'Markdown',
         reply_markup: keyboard
@@ -46,13 +61,15 @@ Cliquez sur le bouton ci-dessous pour ouvrir l'interface interactive directement
 // Callback query handlers
 bot.callbackQuery('cmd_support', async (ctx) => {
     await ctx.answerCallbackQuery();
+    const isFr = isFrenchUser(ctx);
     const keyboard = new InlineKeyboard()
-        .url('👤 Contacter @notthatid', 'https://t.me/notthatid')
+        .url(isFr ? '👤 Contacter @notthatid' : '👤 Contact @notthatid', 'https://t.me/notthatid')
         .row()
-        .url('📢 Canal t.me/TekazMarket', 'https://t.me/TekazMarket')
+        .url(isFr ? '📢 Canal t.me/TekazMarket' : '📢 Channel t.me/TekazMarket', 'https://t.me/TekazMarket')
         .row()
-        .webApp('⭐ Avis Clients & Restocks', `${config.miniAppUrl}?tab=support`);
-    await ctx.reply(`
+        .webApp(isFr ? '⭐ Avis Clients & Restocks' : '⭐ Reviews & Restocks', `${config.miniAppUrl}?tab=support`);
+    const supportMsg = isFr
+        ? `
 🆘 *Support Tekaz Market*
 
 Besoin d'aide, d'une question ou d'une demande sur vos commandes ?
@@ -60,37 +77,60 @@ Besoin d'aide, d'une question ou d'une demande sur vos commandes ?
 • 📢 *Canal officiel :* [t.me/TekazMarket](https://t.me/TekazMarket) (annonces, restocks et alertes en direct)
 
 Consultez également nos 186+ avis vérifiés et les derniers réapprovisionnements dans l'application !
-  `.trim(), { parse_mode: 'Markdown', reply_markup: keyboard });
+    `.trim()
+        : `
+🆘 *Tekaz Market Support*
+
+Need assistance or have questions regarding your order?
+• 👤 *Direct Support:* Message @notthatid
+• 📢 *Official Channel:* [t.me/TekazMarket](https://t.me/TekazMarket) (exclusive drops & restocks)
+
+You can also browse our 186+ verified reviews & live restocks inside the app!
+    `.trim();
+    await ctx.reply(supportMsg, { parse_mode: 'Markdown', reply_markup: keyboard });
 });
 bot.callbackQuery('cmd_orders', async (ctx) => {
     await ctx.answerCallbackQuery();
-    const keyboard = new InlineKeyboard().webApp('🔍 Consulter mes achats', `${config.miniAppUrl}?tab=orders`);
-    await ctx.reply('Retrouvez vos achats, factures et livrables en ouvrant la section *Mes Commandes* dans l\'application :', {
+    const isFr = isFrenchUser(ctx);
+    const keyboard = new InlineKeyboard().webApp(isFr ? '🔍 Consulter mes achats' : '🔍 View My Orders', `${config.miniAppUrl}?tab=orders`);
+    await ctx.reply(isFr
+        ? 'Retrouvez vos achats, factures et livrables en ouvrant la section *Mes Commandes* dans l\'application :'
+        : 'View your purchase history, invoices and delivered credentials in *My Orders* inside the store:', {
         parse_mode: 'Markdown',
         reply_markup: keyboard
     });
 });
 // /help and /support commands
 bot.command(['help', 'support'], async (ctx) => {
+    const isFr = isFrenchUser(ctx);
     const keyboard = new InlineKeyboard()
-        .url('👤 Contacter @notthatid', 'https://t.me/notthatid')
+        .url(isFr ? '👤 Contacter @notthatid' : '👤 Contact @notthatid', 'https://t.me/notthatid')
         .row()
-        .url('📢 Canal t.me/TekazMarket', 'https://t.me/TekazMarket')
+        .url(isFr ? '📢 Canal t.me/TekazMarket' : '📢 Channel t.me/TekazMarket', 'https://t.me/TekazMarket')
         .row()
-        .webApp('🛍️ Ouvrir la Boutique', config.miniAppUrl);
-    await ctx.reply(`
+        .webApp(isFr ? '🛍️ Ouvrir la Boutique' : '🛍️ Open Store', config.miniAppUrl);
+    const helpMsg = isFr
+        ? `
 🆘 *Assistance & Support Tekaz Market*
 
 • Pour toute question ou réclamation : contactez *@notthatid*
 • Rejoignez notre canal officiel : *t.me/TekazMarket* pour suivre tous les restocks et drops
 • Retrouvez vos achats et avis directement dans notre Mini App Telegram !
-  `.trim(), { parse_mode: 'Markdown', reply_markup: keyboard });
+    `.trim()
+        : `
+🆘 *Tekaz Market Assistance & Support*
+
+• For any questions, warranties or inquiries: contact *@notthatid*
+• Join our official channel: *t.me/TekazMarket* for restocks and special deals
+• View your orders and reviews directly inside the Telegram Mini App!
+    `.trim();
+    await ctx.reply(helpMsg, { parse_mode: 'Markdown', reply_markup: keyboard });
 });
 // Function to notify user when an order is completed
 export async function notifyUserOrderCompleted(chatId, invoice) {
     try {
-        let text = `🎉 *Paiement Confirmé pour votre commande #${invoice.id} !*\n\n`;
-        text += `💰 Montant : *${invoice.price} ${invoice.currency}*\n`;
+        let text = `🎉 *Paiement Confirmé / Payment Confirmed #${invoice.id} !*\n\n`;
+        text += `💰 Montant / Amount : *${invoice.price} ${invoice.currency}*\n`;
         text += `📧 Email : \`${invoice.email}\`\n\n`;
         if (invoice.items && invoice.items.length) {
             text += `*Articles :*\n`;
@@ -100,9 +140,9 @@ export async function notifyUserOrderCompleted(chatId, invoice) {
             text += `\n`;
         }
         if (invoice.delivered) {
-            text += `🔑 *Vos livrables :*\n\`\`\`\n${invoice.delivered}\n\`\`\`\n\n`;
+            text += `🔑 *Vos livrables / Credentials :*\n\`\`\`\n${invoice.delivered}\n\`\`\`\n\n`;
         }
-        text += `Merci pour votre achat sur Tekaz Market ! 🙏`;
+        text += `Merci pour votre achat sur Tekaz Market / Thank you for shopping with us! 🙏`;
         await bot.api.sendMessage(chatId, text, { parse_mode: 'Markdown' });
     }
     catch (err) {

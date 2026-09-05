@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import type { CartItem } from '../types.js';
 import { X, Trash2, Mail, ShieldCheck, ArrowRight, ShoppingBag, Lock } from 'lucide-react';
+import { useLanguage } from '../i18n.js';
 
 interface CartDrawerProps {
   isOpen: boolean;
@@ -24,6 +25,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   onCheckout,
   isCheckingOut
 }) => {
+  const { t } = useLanguage();
   const [email, setEmail] = useState(() => {
     return localStorage.getItem('tekaz_customer_email') || '';
   });
@@ -44,7 +46,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
 
   const handleCheckoutClick = () => {
     if (!email || !email.includes('@') || !email.includes('.')) {
-      setEmailError('Veuillez entrer une adresse email valide');
+      setEmailError(t.email_invalid);
       return;
     }
     setEmailError('');
@@ -67,9 +69,9 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
               <ShoppingBag className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="font-extrabold text-base text-white">Mon Panier</h2>
+              <h2 className="font-extrabold text-base text-white">{t.my_cart}</h2>
               <p className="text-[11px] text-gray-400 font-medium">
-                {cart.length} {cart.length > 1 ? 'articles différents' : 'article sélectionné'}
+                {cart.length} {cart.length > 1 ? t.diff_items : t.single_item}
               </p>
             </div>
           </div>
@@ -89,9 +91,9 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
               <div className="w-16 h-16 rounded-2xl bg-gray-900 border border-white/5 flex items-center justify-center mb-3">
                 <ShoppingBag className="w-8 h-8 stroke-1 text-indigo-400/50" />
               </div>
-              <p className="font-bold text-base text-gray-200 mb-1">Votre panier est vide</p>
+              <p className="font-bold text-base text-gray-200 mb-1">{t.cart_empty}</p>
               <p className="text-xs text-gray-500 max-w-xs">
-                Explorez le catalogue Tekaz pour ajouter des comptes, licences ou services à votre panier.
+                {t.cart_empty_desc}
               </p>
             </div>
           ) : (
@@ -176,7 +178,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
               <div className="pt-3 border-t border-white/5">
                 <label className="text-xs font-bold uppercase tracking-wider text-gray-300 block mb-1.5 flex items-center gap-2">
                   <Mail className="w-3.5 h-3.5 text-indigo-400" />
-                  Email de réception des livrables <span className="text-rose-400">*</span>
+                  {t.email_label} <span className="text-rose-400">*</span>
                 </label>
                 <input
                   type="email"
@@ -185,7 +187,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                     setEmail(e.target.value);
                     setEmailError('');
                   }}
-                  placeholder="votre-adresse@domaine.com"
+                  placeholder={t.email_placeholder}
                   className={`w-full px-4 py-3 rounded-xl bg-gray-950 border text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 transition ${
                     emailError
                       ? 'border-rose-500 focus:ring-rose-500/30'
@@ -197,7 +199,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                 ) : (
                   <p className="text-[11px] text-gray-400 mt-1.5 flex items-center gap-1.5 font-medium">
                     <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
-                    Vos clés de licence et identifiants seront expédiés à cette adresse.
+                    {t.email_hint}
                   </p>
                 )}
               </div>
@@ -209,7 +211,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
         {cart.length > 0 && (
           <div className="p-4 sm:p-5 border-t border-white/10 bg-gray-950 space-y-3.5 flex-shrink-0">
             <div className="flex items-center justify-between text-sm">
-              <span className="text-gray-400 font-medium">Montant total</span>
+              <span className="text-gray-400 font-medium">{t.total_cart}</span>
               <span className="text-2xl font-black text-white font-mono tracking-tight">
                 {total.toFixed(2)} {currency}
               </span>
@@ -223,12 +225,12 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
               {isCheckingOut ? (
                 <div className="flex items-center gap-2">
                   <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  <span>Création de la facture SellAuth...</span>
+                  <span>{t.paying}</span>
                 </div>
               ) : (
                 <>
                   <Lock className="w-4 h-4" />
-                  <span>Passer au Paiement Sécurisé</span>
+                  <span>{t.pay_btn}</span>
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}

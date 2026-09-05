@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import type { Product, Variant } from '../types.js';
 import { X, Check, ShoppingBag, Zap, ShieldCheck, Clock, Layers, ArrowRight } from 'lucide-react';
+import { useLanguage } from '../i18n.js';
 
 interface ProductModalProps {
   product: Product | null;
@@ -15,6 +16,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
   onAddToCart,
   onDirectBuy
 }) => {
+  const { t } = useLanguage();
   if (!product) return null;
 
   const variants = useMemo(() => product.variants || [], [product]);
@@ -95,7 +97,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
               <span className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-cyan-400 font-mono">
                 {currentPrice.toFixed(2)} {product.currency || '€'}
               </span>
-              <span className="text-xs text-gray-400 font-medium">TVA incluse • Livraison 24/7</span>
+              <span className="text-xs text-gray-400 font-medium">{t.vat_instant}</span>
             </div>
           </div>
 
@@ -103,18 +105,18 @@ export const ProductModal: React.FC<ProductModalProps> = ({
           <div className="grid grid-cols-3 gap-2">
             <div className="flex flex-col items-center justify-center p-2.5 rounded-2xl bg-gray-900/80 border border-white/5 text-center">
               <Clock className="w-4 h-4 text-cyan-400 mb-1" />
-              <span className="text-[10px] text-gray-200 font-bold">Instantané</span>
-              <span className="text-[9px] text-gray-500">Délivrance 24/7</span>
+              <span className="text-[10px] text-gray-200 font-bold">24/7</span>
+              <span className="text-[9px] text-gray-400">{t.available_24_7}</span>
             </div>
             <div className="flex flex-col items-center justify-center p-2.5 rounded-2xl bg-gray-900/80 border border-white/5 text-center">
               <ShieldCheck className="w-4 h-4 text-emerald-400 mb-1" />
-              <span className="text-[10px] text-gray-200 font-bold">Garantie 100%</span>
-              <span className="text-[9px] text-gray-500">SellAuth certifié</span>
+              <span className="text-[10px] text-gray-200 font-bold">SellAuth</span>
+              <span className="text-[9px] text-gray-400">100% {t.reviews_positive}</span>
             </div>
             <div className="flex flex-col items-center justify-center p-2.5 rounded-2xl bg-gray-900/80 border border-white/5 text-center">
               <Zap className="w-4 h-4 text-amber-400 mb-1" />
-              <span className="text-[10px] text-gray-200 font-bold">Support Dédié</span>
-              <span className="text-[9px] text-gray-500">Assistance client</span>
+              <span className="text-[10px] text-gray-200 font-bold">Support</span>
+              <span className="text-[9px] text-gray-400">@notthatid</span>
             </div>
           </div>
 
@@ -123,7 +125,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
             <div>
               <label className="text-xs font-bold uppercase tracking-wider text-gray-400 block mb-2.5 flex items-center gap-2">
                 <Layers className="w-4 h-4 text-indigo-400" />
-                Choisir une formule / durée
+                {t.select_formula}
               </label>
               <div className="grid grid-cols-1 gap-2">
                 {variants.map((v) => {
@@ -169,7 +171,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                             inStock ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'
                           }`}
                         >
-                          {inStock ? (v.stock === null || v.stock === -1 ? 'Stock' : `${v.stock} dispo`) : 'Épuisé'}
+                          {inStock ? (v.stock === null || v.stock === -1 ? t.in_stock_badge : `${v.stock} ${t.dispo}`) : t.out_of_stock}
                         </span>
                       </div>
                     </button>
@@ -182,7 +184,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
           {/* Quantity Stepper */}
           {isSelectedVariantInStock && (
             <div className="flex items-center justify-between p-3.5 rounded-2xl bg-gray-900/70 border border-white/5">
-              <span className="text-xs font-bold text-gray-300 uppercase tracking-wider">Quantité souhaitée</span>
+              <span className="text-xs font-bold text-gray-300 uppercase tracking-wider">{t.quantity}</span>
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => setQuantity(Math.max(1, quantity - 1))}
@@ -211,7 +213,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
           {product.description && (
             <div>
               <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">
-                Détails et instructions
+                {t.product_description}
               </h3>
               <div
                 className="text-xs sm:text-sm text-gray-300 leading-relaxed space-y-2 prose prose-invert max-w-none break-words bg-gray-950/60 p-3.5 rounded-2xl border border-white/5"
@@ -232,7 +234,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
             className="flex-1 py-3.5 px-4 rounded-xl bg-gray-850 hover:bg-gray-800 active:scale-95 text-white font-bold text-sm transition border border-white/10 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-40"
           >
             <ShoppingBag className="w-4 h-4 text-indigo-400" />
-            <span>Ajouter</span>
+            <span>{t.add_to_cart}</span>
           </button>
 
           <button
@@ -243,7 +245,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
             }}
             className="flex-1 py-3.5 px-4 rounded-xl bg-gradient-to-r from-indigo-600 via-indigo-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 active:scale-95 text-white font-extrabold text-sm transition shadow-lg shadow-indigo-600/30 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-40"
           >
-            <span>Commander ({totalPrice} {product.currency || '€'})</span>
+            <span>{t.instant_buy} ({totalPrice} {product.currency || '€'})</span>
             <ArrowRight className="w-4 h-4" />
           </button>
         </div>

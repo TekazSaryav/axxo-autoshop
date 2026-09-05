@@ -13,10 +13,12 @@ import { CheckoutModal } from './components/CheckoutModal.js';
 import { OrdersTab } from './components/OrdersTab.js';
 import { SupportModal } from './components/SupportModal.js';
 
+import { LanguageProvider, useLanguage } from './i18n.js';
 import { Sparkles, ShieldCheck, Zap, RefreshCw, AlertCircle, ArrowRight } from 'lucide-react';
 
-export function App() {
+function ShopContent() {
   const { user, haptic, openLink } = useTelegram();
+  const { t } = useLanguage();
 
   // Shop & catalog state
   const [shop, setShop] = useState<ShopInfo | null>(null);
@@ -250,20 +252,20 @@ export function App() {
             <div className="relative z-10 max-w-lg">
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-400/30 text-indigo-300 text-xs font-bold mb-3 shadow-sm">
                 <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
-                <span>Autoshop Automatisé • Délivrance 24/7</span>
+                <span>{t.hero_pill}</span>
               </div>
               <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight leading-tight">
-                Comptes, licences & abonnements en livraison directe
+                {t.hero_title}
               </h2>
               <p className="text-xs sm:text-sm text-gray-300 mt-2 leading-relaxed">
-                Réglez en Crypto (BTC, LTC, SOL) ou Carte Bancaire et recevez immédiatement vos accès dans l'application.
+                {t.hero_desc}
               </p>
 
               {/* Badges / Stats Bar with Support and Reviews Trigger */}
               <div className="flex flex-wrap items-center gap-3 mt-4 pt-3 border-t border-white/10 text-xs text-gray-300 font-semibold">
                 <span className="flex items-center gap-1.5 bg-gray-900/60 px-2.5 py-1 rounded-lg border border-white/5">
                   <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                  <span className="font-mono font-bold text-white">{products.length || 69}+</span> en stock
+                  <span className="font-mono font-bold text-white">{products.length || 69}+</span> {t.in_stock}
                 </span>
 
                 <button
@@ -274,7 +276,7 @@ export function App() {
                   className="flex items-center gap-1.5 bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 px-2.5 py-1 rounded-lg border border-indigo-400/30 transition cursor-pointer"
                 >
                   <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>Support @notthatid</span>
+                  <span>{t.support_btn}</span>
                 </button>
 
                 <button
@@ -285,7 +287,7 @@ export function App() {
                   className="flex items-center gap-1.5 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 px-2.5 py-1 rounded-lg border border-cyan-400/30 transition cursor-pointer"
                 >
                   <Zap className="w-3.5 h-3.5 text-amber-400" />
-                  <span>t.me/TekazMarket</span>
+                  <span>{t.channel_btn}</span>
                 </button>
               </div>
             </div>
@@ -330,21 +332,21 @@ export function App() {
             /* Error state with retry */
             <div className="glass-card rounded-3xl p-8 text-center my-6 max-w-md mx-auto space-y-3">
               <AlertCircle className="w-12 h-12 text-rose-400 mx-auto" />
-              <h3 className="font-extrabold text-base text-white">Erreur de chargement</h3>
+              <h3 className="font-extrabold text-base text-white">{t.loading_error}</h3>
               <p className="text-xs text-gray-400">{error}</p>
               <button
                 onClick={() => loadData(true)}
                 className="px-5 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs transition inline-flex items-center gap-2 shadow-lg shadow-indigo-600/30 cursor-pointer"
               >
                 <RefreshCw className="w-4 h-4" />
-                Réessayer la connexion
+                {t.retry_conn}
               </button>
             </div>
           ) : filteredProducts.length === 0 ? (
             /* Empty state */
             <div className="glass-card rounded-3xl p-10 text-center my-6 space-y-2.5">
-              <p className="font-bold text-gray-200">Aucun produit ne correspond à votre recherche</p>
-              <p className="text-xs text-gray-400">Essayez un autre terme ou explorez toutes nos catégories.</p>
+              <p className="font-bold text-gray-200">{t.no_product_match}</p>
+              <p className="text-xs text-gray-400">{t.no_product_desc}</p>
               {(searchQuery || selectedCategory !== null) && (
                 <button
                   onClick={() => {
@@ -353,7 +355,7 @@ export function App() {
                   }}
                   className="mt-2 text-xs font-bold text-indigo-400 hover:text-indigo-300 underline cursor-pointer"
                 >
-                  Réinitialiser les filtres
+                  {t.reset_filters}
                 </button>
               )}
             </div>
@@ -393,7 +395,7 @@ export function App() {
               <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center font-bold text-xs font-mono">
                 {totalCartItems}
               </div>
-              <span className="text-xs uppercase tracking-wider font-extrabold">Voir mon panier</span>
+              <span className="text-xs uppercase tracking-wider font-extrabold">{t.view_cart_floating}</span>
             </div>
 
             <div className="flex items-center gap-2">
@@ -458,4 +460,15 @@ export function App() {
   );
 }
 
+export function App() {
+  const { user } = useTelegram();
+
+  return (
+    <LanguageProvider telegramUser={user}>
+      <ShopContent />
+    </LanguageProvider>
+  );
+}
+
 export default App;
+

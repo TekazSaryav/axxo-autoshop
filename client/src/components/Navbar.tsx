@@ -1,6 +1,7 @@
 import React from 'react';
 import { ShoppingBag, PackageCheck, Zap, HelpCircle } from 'lucide-react';
 import type { ShopInfo, TelegramWebAppUser } from '../types.js';
+import { useLanguage } from '../i18n.js';
 
 interface NavbarProps {
   shop: ShopInfo | null;
@@ -19,6 +20,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenOrders,
   onOpenSupport
 }) => {
+  const { language, toggleLanguage, t } = useLanguage();
+
   return (
     <header className="sticky top-0 z-30 glass-panel border-b border-white/10 px-4 py-3">
       <div className="max-w-4xl mx-auto flex items-center justify-between">
@@ -49,7 +52,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 Tekaz Market
               </h1>
               <span className="px-1.5 py-0.5 text-[9px] font-black uppercase bg-indigo-500/20 text-indigo-300 rounded border border-indigo-500/30">
-                24/7
+                {t.shop_badge}
               </span>
             </div>
             <p className="text-[11px] text-gray-400 flex items-center gap-1 mt-0.5">
@@ -58,19 +61,32 @@ export const Navbar: React.FC<NavbarProps> = ({
                   @{user.username || user.first_name}
                 </span>
               ) : (
-                <span className="text-gray-400">Autoshop Officiel</span>
+                <span className="text-gray-400">{t.official_shop}</span>
               )}
             </p>
           </div>
         </div>
 
-        {/* Right: Actions (Support, Orders & Cart) with min 44x44px touch targets */}
+        {/* Right: Actions (Language Switcher, Support, Orders & Cart) */}
         <div className="flex items-center gap-1.5 sm:gap-2">
+          {/* Language Switcher Button (FR / EN) */}
+          <button
+            onClick={toggleLanguage}
+            className="h-10 px-2.5 rounded-xl bg-gray-850/90 hover:bg-gray-800 active:scale-95 text-xs font-black transition border border-white/10 flex items-center gap-1.5 cursor-pointer shadow-sm"
+            title={t.switch_lang_title}
+            aria-label={t.switch_lang_title}
+          >
+            <span className="text-sm leading-none">{language === 'fr' ? '🇫🇷' : '🇬🇧'}</span>
+            <span className="font-mono text-gray-200 uppercase tracking-wider text-[11px]">
+              {language}
+            </span>
+          </button>
+
           <button
             onClick={onOpenSupport}
             className="w-10 sm:w-11 h-10 sm:h-11 rounded-xl bg-gray-850/80 hover:bg-gray-800 active:scale-95 text-gray-300 hover:text-white transition border border-white/5 flex items-center justify-center cursor-pointer shadow-sm"
-            title="Support & Avis"
-            aria-label="Support et Avis"
+            title={t.support_reviews}
+            aria-label={t.support_reviews}
           >
             <HelpCircle className="w-5 h-5 text-cyan-400" />
           </button>
@@ -78,8 +94,8 @@ export const Navbar: React.FC<NavbarProps> = ({
           <button
             onClick={onOpenOrders}
             className="w-10 sm:w-11 h-10 sm:h-11 rounded-xl bg-gray-850/80 hover:bg-gray-800 active:scale-95 text-gray-300 hover:text-white transition border border-white/5 flex items-center justify-center cursor-pointer shadow-sm"
-            title="Mes Commandes"
-            aria-label="Mes Commandes"
+            title={t.my_orders}
+            aria-label={t.my_orders}
           >
             <PackageCheck className="w-5 h-5 text-indigo-400" />
           </button>
@@ -87,10 +103,10 @@ export const Navbar: React.FC<NavbarProps> = ({
           <button
             onClick={onOpenCart}
             className="relative h-11 px-3.5 rounded-xl bg-gradient-to-r from-indigo-600 via-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 active:scale-95 text-white transition shadow-lg shadow-indigo-600/25 flex items-center gap-2 font-bold text-xs cursor-pointer"
-            aria-label="Voir le Panier"
+            aria-label={t.cart}
           >
             <ShoppingBag className="w-4 h-4" />
-            <span className="hidden xs:inline">Panier</span>
+            <span className="hidden xs:inline">{t.cart}</span>
             {cartCount > 0 && (
               <span className="px-1.5 py-0.5 text-[11px] font-black bg-white text-indigo-900 rounded-full min-w-[1.25rem] text-center shadow font-mono">
                 {cartCount}

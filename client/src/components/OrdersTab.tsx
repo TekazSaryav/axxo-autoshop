@@ -1,6 +1,7 @@
 import React from 'react';
 import type { SavedOrder } from '../types.js';
 import { PackageCheck, ExternalLink, X, Clock, CheckCircle2 } from 'lucide-react';
+import { useLanguage } from '../i18n.js';
 
 interface OrdersTabProps {
   isOpen: boolean;
@@ -15,6 +16,7 @@ export const OrdersTab: React.FC<OrdersTabProps> = ({
   orders,
   onOpenOrder
 }) => {
+  const { t, language } = useLanguage();
   if (!isOpen) return null;
 
   return (
@@ -32,8 +34,8 @@ export const OrdersTab: React.FC<OrdersTabProps> = ({
               <PackageCheck className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="font-extrabold text-base text-white">Mes Commandes</h2>
-              <p className="text-[11px] text-gray-400 font-medium">Historique d'achats et factures</p>
+              <h2 className="font-extrabold text-base text-white">{t.orders_title}</h2>
+              <p className="text-[11px] text-gray-400 font-medium">{t.orders_subtitle}</p>
             </div>
           </div>
           <button
@@ -51,9 +53,9 @@ export const OrdersTab: React.FC<OrdersTabProps> = ({
               <div className="w-16 h-16 rounded-2xl bg-gray-900 border border-white/5 flex items-center justify-center mb-3">
                 <PackageCheck className="w-8 h-8 stroke-1 text-indigo-400/50" />
               </div>
-              <p className="font-bold text-base text-gray-200 mb-1">Aucune commande récente</p>
+              <p className="font-bold text-base text-gray-200 mb-1">{t.no_orders_title}</p>
               <p className="text-xs text-gray-500 max-w-xs">
-                Vos achats et livrables apparaîtront automatiquement ici dès que vous aurez validé un panier.
+                {t.no_orders_desc}
               </p>
             </div>
           ) : (
@@ -78,19 +80,19 @@ export const OrdersTab: React.FC<OrdersTabProps> = ({
                       {ord.status === 'completed' || ord.status === 'paid' ? (
                         <>
                           <CheckCircle2 className="w-3 h-3" />
-                          Payé
+                          {t.paid_status}
                         </>
                       ) : (
                         <>
                           <Clock className="w-3 h-3" />
-                          En attente
+                          {t.pending_status}
                         </>
                       )}
                     </span>
                   </div>
 
                   <p className="text-[11px] text-gray-400">
-                    {new Date(ord.date).toLocaleDateString('fr-FR', {
+                    {new Date(ord.date).toLocaleDateString(language === 'fr' ? 'fr-FR' : 'en-US', {
                       day: '2-digit',
                       month: 'short',
                       year: 'numeric',

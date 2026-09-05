@@ -1,5 +1,6 @@
 import React from 'react';
 import { Search, X } from 'lucide-react';
+import { useLanguage } from '../i18n.js';
 
 interface SearchBarProps {
   value: string;
@@ -7,6 +8,8 @@ interface SearchBarProps {
 }
 
 export const SearchBar: React.FC<SearchBarProps> = ({ value, onChange }) => {
+  const { t } = useLanguage();
+
   return (
     <div className="px-4 py-2">
       <div className="relative flex items-center">
@@ -15,7 +18,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({ value, onChange }) => {
           type="text"
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          placeholder="Rechercher un produit, abonnement, jeu..."
+          placeholder={t.search_placeholder}
           className="w-full pl-10 pr-10 py-2.5 bg-gray-900/90 border border-white/10 rounded-xl text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:border-indigo-500/60 focus:ring-1 focus:ring-indigo-500/60 transition"
         />
         {value && (

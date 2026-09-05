@@ -1,6 +1,7 @@
 import React from 'react';
 import type { Product } from '../types.js';
 import { ShoppingBag, Zap, Eye } from 'lucide-react';
+import { useLanguage } from '../i18n.js';
 
 interface ProductCardProps {
   product: Product;
@@ -13,6 +14,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   onOpenDetails,
   onQuickAdd
 }) => {
+  const { t } = useLanguage();
   const imageUrl = product.images?.[0]?.url;
 
   // Calculate price display
@@ -93,7 +95,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({
               isInStock ? 'bg-white animate-pulse' : 'bg-rose-200'
             }`}
           />
-          <span>{isInStock ? (isUnlimited ? 'Dispo 24/7' : `${totalStock} restants`) : 'Épuisé'}</span>
+          <span>
+            {isInStock ? (isUnlimited ? t.available_24_7 : `${totalStock} ${t.left_stock}`) : t.out_of_stock}
+          </span>
         </div>
       </div>
 
@@ -106,7 +110,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
           {product.variants && product.variants.length > 1 && (
             <p className="text-[11px] text-gray-400 font-medium mb-1.5">
-              {product.variants.length} formules au choix
+              {product.variants.length} {t.formulas_choice}
             </p>
           )}
         </div>
@@ -115,7 +119,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         <div className="flex items-center justify-between pt-2 border-t border-white/5 mt-1.5">
           <div>
             <span className="text-[9px] text-gray-400 block uppercase tracking-wider font-extrabold">
-              {product.variants && product.variants.length > 1 ? 'À partir de' : 'Prix unique'}
+              {product.variants && product.variants.length > 1 ? t.from_price : t.single_price}
             </span>
             <span className="font-extrabold text-base text-white tracking-tight font-mono">
               {minPrice.toFixed(2)} {product.currency || '€'}
@@ -129,8 +133,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                 onOpenDetails(product);
               }}
               className="w-9 h-9 rounded-xl bg-gray-800/90 hover:bg-gray-700 active:scale-95 text-gray-300 hover:text-white transition flex items-center justify-center border border-white/5 cursor-pointer"
-              title="Détails"
-              aria-label="Voir les détails"
+              title={t.details}
+              aria-label={t.details}
             >
               <Eye className="w-4 h-4" />
             </button>
@@ -142,8 +146,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                   onQuickAdd(product);
                 }}
                 className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 active:scale-95 text-white transition shadow-md shadow-indigo-600/30 flex items-center justify-center cursor-pointer"
-                title="Ajouter au panier"
-                aria-label="Ajouter au panier"
+                title={t.add_to_cart}
+                aria-label={t.add_to_cart}
               >
                 <ShoppingBag className="w-4 h-4" />
               </button>

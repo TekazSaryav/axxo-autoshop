@@ -1,6 +1,7 @@
 import React from 'react';
 import type { Category } from '../types.js';
 import { Layers, Tv, Bot, Shield, MessageSquare, Sparkles, Trophy, Video } from 'lucide-react';
+import { useLanguage } from '../i18n.js';
 
 interface CategoryTabsProps {
   categories: Category[];
@@ -26,6 +27,8 @@ export const CategoryTabs: React.FC<CategoryTabsProps> = ({
   onSelectCategory,
   totalProducts
 }) => {
+  const { t } = useLanguage();
+
   return (
     <div className="flex items-center gap-2 overflow-x-auto py-2.5 px-4 no-scrollbar">
       <button
@@ -37,7 +40,7 @@ export const CategoryTabs: React.FC<CategoryTabsProps> = ({
         }`}
       >
         <Layers className="w-3.5 h-3.5 text-indigo-400" />
-        <span>Tous</span>
+        <span>{t.all_categories}</span>
         <span
           className={`px-1.5 py-0.5 rounded-full text-[10px] font-extrabold ${
             selectedCategory === null ? 'bg-white/20 text-white' : 'bg-gray-800 text-gray-400'

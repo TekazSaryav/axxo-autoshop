@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import confetti from 'canvas-confetti';
 import { ExternalLink, CheckCircle2, Copy, Check, X, ShieldCheck, CreditCard, Coins } from 'lucide-react';
 import { fetchInvoice } from '../services/api.js';
+import { useLanguage } from '../i18n.js';
 
 interface CheckoutModalProps {
   invoiceId: number | string;
@@ -21,6 +22,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   onOpenPaymentLink,
   haptic
 }) => {
+  const { t } = useLanguage();
   const [invoice, setInvoice] = useState<any>(null);
   const [status, setStatus] = useState<string>('pending');
   const [copied, setCopied] = useState(false);
@@ -99,9 +101,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             </div>
 
             <div>
-              <h3 className="text-xl font-black text-white tracking-tight">Paiement Validé !</h3>
+              <h3 className="text-xl font-black text-white tracking-tight">{t.payment_detected}</h3>
               <p className="text-xs text-emerald-400 font-semibold mt-1">
-                Facture <span className="font-mono">#{invoiceId}</span> honorée
+                {t.order_id} <span className="font-mono">#{invoiceId}</span>
               </p>
             </div>
 
@@ -109,13 +111,13 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             {invoice?.delivered ? (
               <div className="text-left bg-gray-950 p-4 rounded-2xl border border-white/10 space-y-2">
                 <div className="flex items-center justify-between text-xs text-gray-400">
-                  <span className="font-bold text-gray-200">Vos livrables (clés / comptes) :</span>
+                  <span className="font-bold text-gray-200">{t.deliverables_received}</span>
                   <button
                     onClick={() => copyDeliverables(invoice.delivered)}
                     className="flex items-center gap-1.5 text-indigo-400 hover:text-indigo-300 font-bold px-2 py-1 rounded-lg bg-indigo-500/10 border border-indigo-500/20 transition cursor-pointer"
                   >
                     {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                    {copied ? 'Copié !' : 'Copier'}
+                    {copied ? t.copied : t.copy_all}
                   </button>
                 </div>
                 <pre className="p-3 rounded-xl bg-gray-900 border border-white/5 font-mono text-xs text-emerald-300 whitespace-pre-wrap break-all select-all leading-relaxed">
@@ -124,8 +126,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               </div>
             ) : (
               <div className="p-3.5 bg-gray-900/80 border border-white/5 rounded-2xl text-xs text-gray-300">
-                Vos accès ont également été envoyés à{' '}
-                <span className="text-indigo-300 font-bold font-mono">{invoice?.email}</span> ainsi que par message Telegram.
+                <span className="text-indigo-300 font-bold font-mono">{invoice?.email}</span>
               </div>
             )}
 
@@ -133,7 +134,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               onClick={onClose}
               className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white font-extrabold text-sm transition shadow-lg shadow-indigo-600/30 cursor-pointer"
             >
-              Terminer et retourner à la boutique
+              {t.close_btn}
             </button>
           </div>
         ) : (
@@ -148,13 +149,13 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             </div>
 
             <div>
-              <h3 className="text-lg font-black text-white tracking-tight">Commande en attente de paiement</h3>
+              <h3 className="text-lg font-black text-white tracking-tight">{t.awaiting_payment}</h3>
               <div className="flex items-center justify-center gap-1.5 mt-1 text-xs text-gray-400">
-                <span>Facture</span>
+                <span>{t.order_id}</span>
                 <button
                   onClick={copyInvoiceId}
                   className="font-mono text-indigo-300 font-bold bg-gray-800/80 px-2 py-0.5 rounded-md border border-white/5 hover:border-white/20 transition flex items-center gap-1 cursor-pointer"
-                  title="Copier le numéro de facture"
+                  title={t.copy_order_id}
                 >
                   #{invoiceId}
                   {idCopied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3 text-gray-400" />}
@@ -165,11 +166,11 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             {/* Payment Methods Badges */}
             <div className="p-3.5 bg-gray-950/70 border border-white/5 rounded-2xl text-left space-y-2">
               <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block">
-                Moyens de paiement acceptés :
+                {t.crypto_cards_accepted}
               </span>
               <div className="flex flex-wrap gap-1.5 text-[11px] font-semibold">
                 <span className="px-2 py-1 rounded-lg bg-indigo-500/15 text-indigo-300 border border-indigo-500/20 flex items-center gap-1">
-                  <CreditCard className="w-3 h-3" /> Carte / Stripe
+                  <CreditCard className="w-3 h-3" /> Cards
                 </span>
                 <span className="px-2 py-1 rounded-lg bg-amber-500/15 text-amber-300 border border-amber-500/20">
                   ₿ Bitcoin
@@ -188,7 +189,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               onClick={() => onOpenPaymentLink(invoiceUrl)}
               className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-indigo-600 via-indigo-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 active:scale-95 text-white font-black text-sm transition shadow-lg shadow-indigo-600/30 flex items-center justify-center gap-2 cursor-pointer"
             >
-              <span>Accéder à la Passerelle SellAuth</span>
+              <span>{t.open_payment_page}</span>
               <ExternalLink className="w-4 h-4" />
             </button>
 
@@ -198,7 +199,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
               </span>
-              <span>Détection automatique du paiement en cours...</span>
+              <span>{t.payment_instructions}</span>
             </div>
           </div>
         )}
