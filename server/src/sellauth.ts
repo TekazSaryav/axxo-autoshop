@@ -16,10 +16,13 @@ export interface Product {
   description: string;
   price?: string | null;
   currency: string;
+  sort_priority?: number | null;
+  category_id?: number | null;
   category?: {
     id: number;
     name: string;
     path: string;
+    order?: number;
   } | null;
   images: Array<{
     id: number;
@@ -28,6 +31,13 @@ export interface Product {
   variants: Variant[];
   stock_count: number | null;
   deliverables_type?: string;
+}
+
+export interface Category {
+  id: number;
+  name: string;
+  order: number;
+  count: number;
 }
 
 export interface ShopInfo {
@@ -47,6 +57,7 @@ export interface ShopInfo {
 }
 
 let cachedProducts: Product[] | null = null;
+let cachedCategories: Category[] | null = null;
 let lastProductsFetchTime = 0;
 const CACHE_TTL_MS = 60 * 1000; // 60 seconds
 
@@ -89,18 +100,45 @@ class SellAuthService {
     }
   }
 
-  async getProducts(forceRefresh = false): Promise<{ products: Product[]; categories: Array<{ id: number; name: string; count: number }> }> {
+  async getProducts(forceRefresh = false): Promise<{ products: Product[]; categories: Category[] }> {
     const now = Date.now();
-    if (!forceRefresh && cachedProducts && (now - lastProductsFetchTime < CACHE_TTL_MS)) {
-      return this.formatProductsResponse(cachedProducts);
+    if (!forceRefresh && cachedProducts && cachedCategories && (now - lastProductsFetchTime < CACHE_TTL_MS)) {
+      return {
+        products: cachedProducts,
+        categories: cachedCategories
+      };
     }
 
     try {
-      let allProducts: Product[] = [];
-      let page = 1;
-      let lastPage = 1;
+      // 1. Fetch categories to get exact dashboard order
+      let officialCategories: Category[] = [];
+      const catOrderMap = new Map<number, number>();
 
-      // Fetch first page and determine total pages
+      try {
+        const catRes = await fetch(`${config.sellauthBaseUrl}/shops/${config.sellauthShopId}/categories`, {
+          headers: this.headers
+        });
+        if (catRes.ok) {
+          const catData = (await catRes.json()) as any;
+          const rawCats = catData.data || [];
+          // Sort categories strictly by their defined order
+          rawCats.sort((a: any, b: any) => (a.order ?? 999) - (b.order ?? 999));
+          for (const c of rawCats) {
+            catOrderMap.set(c.id, c.order ?? 999);
+            officialCategories.push({
+              id: c.id,
+              name: c.name,
+              order: c.order ?? 999,
+              count: 0
+            });
+          }
+        }
+      } catch (catErr) {
+        console.warn('Could not fetch official categories, fallback to product categories:', catErr);
+      }
+
+      // 2. Fetch all products (pages 1 to N)
+      let allProducts: Product[] = [];
       const firstRes = await fetch(`${config.sellauthBaseUrl}/shops/${config.sellauthShopId}/products?page=1&per_page=50`, {
         headers: this.headers
       });
@@ -111,9 +149,8 @@ class SellAuthService {
 
       const firstData = (await firstRes.json()) as any;
       allProducts = allProducts.concat(firstData.data || []);
-      lastPage = firstData.last_page || 1;
+      const lastPage = firstData.last_page || 1;
 
-      // Fetch remaining pages if any
       if (lastPage > 1) {
         const pagePromises = [];
         for (let p = 2; p <= Math.min(lastPage, 5); p++) {
@@ -131,43 +168,61 @@ class SellAuthService {
         }
       }
 
+      // 3. Count products per category
+      const counts = new Map<number, number>();
+      for (const p of allProducts) {
+        const catId = p.category?.id || (p as any).category_id;
+        if (catId) {
+          counts.set(catId, (counts.get(catId) || 0) + 1);
+        }
+      }
+
+      for (const cat of officialCategories) {
+        cat.count = counts.get(cat.id) || 0;
+      }
+
+      // 4. Sort products in the exact merchant order:
+      // First by Category Order (Streaming: 0, AI: 1, VPN: 2...), then by product sort_priority (0, 1, 2, 3...)
+      allProducts.sort((a, b) => {
+        const catIdA = a.category?.id || (a as any).category_id;
+        const catIdB = b.category?.id || (b as any).category_id;
+
+        const orderA = catIdA ? (catOrderMap.get(catIdA) ?? 999) : 999;
+        const orderB = catIdB ? (catOrderMap.get(catIdB) ?? 999) : 999;
+
+        if (orderA !== orderB) {
+          return orderA - orderB;
+        }
+
+        // Within same category, sort by sort_priority
+        const prioA = (a.sort_priority !== undefined && a.sort_priority !== null) ? a.sort_priority : 999;
+        const prioB = (b.sort_priority !== undefined && b.sort_priority !== null) ? b.sort_priority : 999;
+
+        if (prioA !== prioB) {
+          return prioA - prioB;
+        }
+
+        return a.id - b.id;
+      });
+
       cachedProducts = allProducts;
+      cachedCategories = officialCategories;
       lastProductsFetchTime = now;
-      return this.formatProductsResponse(allProducts);
+
+      return {
+        products: allProducts,
+        categories: officialCategories
+      };
     } catch (err: any) {
       console.error('Error fetching products:', err.message);
-      if (cachedProducts) {
-        return this.formatProductsResponse(cachedProducts);
+      if (cachedProducts && cachedCategories) {
+        return {
+          products: cachedProducts,
+          categories: cachedCategories
+        };
       }
       throw err;
     }
-  }
-
-  private formatProductsResponse(products: Product[]) {
-    // Collect distinct categories
-    const categoryMap = new Map<number, { id: number; name: string; count: number }>();
-
-    for (const p of products) {
-      if (p.category && p.category.id) {
-        const existing = categoryMap.get(p.category.id);
-        if (existing) {
-          existing.count++;
-        } else {
-          categoryMap.set(p.category.id, {
-            id: p.category.id,
-            name: p.category.name,
-            count: 1
-          });
-        }
-      }
-    }
-
-    const categories = Array.from(categoryMap.values()).sort((a, b) => b.count - a.count);
-
-    return {
-      products,
-      categories
-    };
   }
 
   async createCheckout(cart: Array<{ productId: number; variantId?: number; quantity: number }>, email: string) {

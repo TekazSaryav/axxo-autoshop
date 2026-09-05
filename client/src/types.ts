@@ -14,10 +14,12 @@ export interface Product {
   description: string;
   price?: string | null;
   currency: string;
+  sort_priority?: number | null;
   category?: {
     id: number;
     name: string;
     path: string;
+    order?: number;
   } | null;
   images: Array<{
     id: number;
@@ -31,6 +33,7 @@ export interface Product {
 export interface Category {
   id: number;
   name: string;
+  order?: number;
   count: number;
 }
 
