@@ -28,6 +28,17 @@ apiRouter.get('/products', async (req: Request, res: Response) => {
   }
 });
 
+// GET /api/feedbacks (SellAuth customer feedbacks + restocks)
+apiRouter.get('/feedbacks', async (_req: Request, res: Response) => {
+  try {
+    const feedbackData = await sellauthService.getFeedbacks();
+    const restocks = await sellauthService.getRestocks();
+    res.json({ success: true, ...feedbackData, restocks });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // POST /api/checkout
 apiRouter.post('/checkout', async (req: Request, res: Response) => {
   try {

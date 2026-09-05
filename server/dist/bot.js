@@ -46,13 +46,21 @@ Cliquez sur le bouton ci-dessous pour ouvrir l'interface interactive directement
 // Callback query handlers
 bot.callbackQuery('cmd_support', async (ctx) => {
     await ctx.answerCallbackQuery();
+    const keyboard = new InlineKeyboard()
+        .url('👤 Contacter @notthatid', 'https://t.me/notthatid')
+        .row()
+        .url('📢 Canal t.me/TekazMarket', 'https://t.me/TekazMarket')
+        .row()
+        .webApp('⭐ Avis Clients & Restocks', `${config.miniAppUrl}?tab=support`);
     await ctx.reply(`
-🆘 *Besoin d'aide ou d'assistance ?*
+🆘 *Support Tekaz Market*
 
-Notre équipe est disponible pour répondre à toutes vos questions :
-• Site officiel : https://${config.shopDomain}
-• Ouvrez un ticket directement sur le site ou contactez notre support.
-  `.trim(), { parse_mode: 'Markdown' });
+Besoin d'aide, d'une question ou d'une demande sur vos commandes ?
+• 👤 *Support direct :* Contactez @notthatid
+• 📢 *Canal officiel :* [t.me/TekazMarket](https://t.me/TekazMarket) (annonces, restocks et alertes en direct)
+
+Consultez également nos 186+ avis vérifiés et les derniers réapprovisionnements dans l'application !
+  `.trim(), { parse_mode: 'Markdown', reply_markup: keyboard });
 });
 bot.callbackQuery('cmd_orders', async (ctx) => {
     await ctx.answerCallbackQuery();
@@ -62,14 +70,21 @@ bot.callbackQuery('cmd_orders', async (ctx) => {
         reply_markup: keyboard
     });
 });
-// /help command
-bot.command('help', async (ctx) => {
+// /help and /support commands
+bot.command(['help', 'support'], async (ctx) => {
+    const keyboard = new InlineKeyboard()
+        .url('👤 Contacter @notthatid', 'https://t.me/notthatid')
+        .row()
+        .url('📢 Canal t.me/TekazMarket', 'https://t.me/TekazMarket')
+        .row()
+        .webApp('🛍️ Ouvrir la Boutique', config.miniAppUrl);
     await ctx.reply(`
-📌 *Commandes disponibles :*
-• /start - Ouvrir la boutique Tekaz
-• /help - Obtenir de l'aide et informations
-• /support - Contacter l'assistance
-  `.trim(), { parse_mode: 'Markdown' });
+🆘 *Assistance & Support Tekaz Market*
+
+• Pour toute question ou réclamation : contactez *@notthatid*
+• Rejoignez notre canal officiel : *t.me/TekazMarket* pour suivre tous les restocks et drops
+• Retrouvez vos achats et avis directement dans notre Mini App Telegram !
+  `.trim(), { parse_mode: 'Markdown', reply_markup: keyboard });
 });
 // Function to notify user when an order is completed
 export async function notifyUserOrderCompleted(chatId, invoice) {

@@ -25,6 +25,17 @@ apiRouter.get('/products', async (req, res) => {
         res.status(500).json({ success: false, error: err.message });
     }
 });
+// GET /api/feedbacks (SellAuth customer feedbacks + restocks)
+apiRouter.get('/feedbacks', async (_req, res) => {
+    try {
+        const feedbackData = await sellauthService.getFeedbacks();
+        const restocks = await sellauthService.getRestocks();
+        res.json({ success: true, ...feedbackData, restocks });
+    }
+    catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
 // POST /api/checkout
 apiRouter.post('/checkout', async (req, res) => {
     try {

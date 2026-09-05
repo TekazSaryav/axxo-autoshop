@@ -52,3 +52,17 @@ export async function fetchInvoice(invoiceId: string | number) {
   }
   return data.invoice;
 }
+
+export async function fetchFeedbacks(): Promise<{
+  feedbacks: Array<{ id: number; rating: number; message: string | null; date: string; product: string }>;
+  total: number;
+  averageRating: number;
+  restocks: Array<{ id: number; name: string; price: string; stock: number | null; category: string; updated_at: string }>;
+}> {
+  const res = await fetch('/api/feedbacks');
+  const data = await res.json();
+  if (!res.ok || !data.success) {
+    throw new Error(data.error || 'Failed to fetch feedbacks');
+  }
+  return data;
+}

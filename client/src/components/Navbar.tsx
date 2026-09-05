@@ -1,5 +1,5 @@
 import React from 'react';
-import { ShoppingBag, PackageCheck, Zap } from 'lucide-react';
+import { ShoppingBag, PackageCheck, Zap, HelpCircle } from 'lucide-react';
 import type { ShopInfo, TelegramWebAppUser } from '../types.js';
 
 interface NavbarProps {
@@ -8,6 +8,7 @@ interface NavbarProps {
   cartCount: number;
   onOpenCart: () => void;
   onOpenOrders: () => void;
+  onOpenSupport: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -15,7 +16,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   user,
   cartCount,
   onOpenCart,
-  onOpenOrders
+  onOpenOrders,
+  onOpenSupport
 }) => {
   return (
     <header className="sticky top-0 z-30 glass-panel border-b border-white/10 px-4 py-3">
@@ -62,11 +64,20 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
         </div>
 
-        {/* Right: Actions (Orders & Cart) with min 44x44px touch targets */}
-        <div className="flex items-center gap-2">
+        {/* Right: Actions (Support, Orders & Cart) with min 44x44px touch targets */}
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          <button
+            onClick={onOpenSupport}
+            className="w-10 sm:w-11 h-10 sm:h-11 rounded-xl bg-gray-850/80 hover:bg-gray-800 active:scale-95 text-gray-300 hover:text-white transition border border-white/5 flex items-center justify-center cursor-pointer shadow-sm"
+            title="Support & Avis"
+            aria-label="Support et Avis"
+          >
+            <HelpCircle className="w-5 h-5 text-cyan-400" />
+          </button>
+
           <button
             onClick={onOpenOrders}
-            className="w-11 h-11 rounded-xl bg-gray-850/80 hover:bg-gray-800 active:scale-95 text-gray-300 hover:text-white transition border border-white/5 flex items-center justify-center cursor-pointer shadow-sm"
+            className="w-10 sm:w-11 h-10 sm:h-11 rounded-xl bg-gray-850/80 hover:bg-gray-800 active:scale-95 text-gray-300 hover:text-white transition border border-white/5 flex items-center justify-center cursor-pointer shadow-sm"
             title="Mes Commandes"
             aria-label="Mes Commandes"
           >

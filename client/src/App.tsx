@@ -11,8 +11,9 @@ import { ProductModal } from './components/ProductModal.js';
 import { CartDrawer } from './components/CartDrawer.js';
 import { CheckoutModal } from './components/CheckoutModal.js';
 import { OrdersTab } from './components/OrdersTab.js';
+import { SupportModal } from './components/SupportModal.js';
 
-import { Sparkles, ShieldCheck, Zap, RefreshCw, AlertCircle, ShoppingBag, ArrowRight } from 'lucide-react';
+import { Sparkles, ShieldCheck, Zap, RefreshCw, AlertCircle, ArrowRight } from 'lucide-react';
 
 export function App() {
   const { user, haptic, openLink } = useTelegram();
@@ -32,8 +33,21 @@ export function App() {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isOrdersOpen, setIsOrdersOpen] = useState(false);
+  const [isSupportOpen, setIsSupportOpen] = useState(false);
   const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [activeCheckout, setActiveCheckout] = useState<{ invoiceId: number; invoiceUrl: string } | null>(null);
+
+  // Check URL tab parameter on mount
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('tab') === 'support') {
+        setIsSupportOpen(true);
+      } else if (params.get('tab') === 'orders') {
+        setIsOrdersOpen(true);
+      }
+    } catch {}
+  }, []);
 
   // Cart state persisted
   const [cart, setCart] = useState<CartItem[]>(() => {
@@ -223,6 +237,10 @@ export function App() {
           haptic.selection();
           setIsOrdersOpen(true);
         }}
+        onOpenSupport={() => {
+          haptic.selection();
+          setIsSupportOpen(true);
+        }}
       />
 
       <main className="max-w-4xl mx-auto w-full flex-1">
@@ -241,20 +259,34 @@ export function App() {
                 Réglez en Crypto (BTC, LTC, SOL) ou Carte Bancaire et recevez immédiatement vos accès dans l'application.
               </p>
 
-              {/* Badges / Stats Bar */}
-              <div className="flex flex-wrap items-center gap-4 mt-4 pt-3 border-t border-white/10 text-xs text-gray-300 font-semibold">
-                <span className="flex items-center gap-1.5">
+              {/* Badges / Stats Bar with Support and Reviews Trigger */}
+              <div className="flex flex-wrap items-center gap-3 mt-4 pt-3 border-t border-white/10 text-xs text-gray-300 font-semibold">
+                <span className="flex items-center gap-1.5 bg-gray-900/60 px-2.5 py-1 rounded-lg border border-white/5">
                   <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                  <span className="font-mono font-bold text-white">{products.length || 69}+</span> produits en stock
+                  <span className="font-mono font-bold text-white">{products.length || 69}+</span> en stock
                 </span>
-                <span className="flex items-center gap-1.5">
-                  <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                  Garantie SellAuth
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <Zap className="w-4 h-4 text-amber-400" />
-                  Instantané
-                </span>
+
+                <button
+                  onClick={() => {
+                    haptic.selection();
+                    setIsSupportOpen(true);
+                  }}
+                  className="flex items-center gap-1.5 bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 px-2.5 py-1 rounded-lg border border-indigo-400/30 transition cursor-pointer"
+                >
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Support @notthatid</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    haptic.selection();
+                    setIsSupportOpen(true);
+                  }}
+                  className="flex items-center gap-1.5 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 px-2.5 py-1 rounded-lg border border-cyan-400/30 transition cursor-pointer"
+                >
+                  <Zap className="w-3.5 h-3.5 text-amber-400" />
+                  <span>t.me/TekazMarket</span>
+                </button>
               </div>
             </div>
 
@@ -403,6 +435,13 @@ export function App() {
         onOpenOrder={(invoiceId, url) => {
           setActiveCheckout({ invoiceId: Number(invoiceId), invoiceUrl: url });
         }}
+      />
+
+      {/* Support, Feedbacks & Restocks Modal */}
+      <SupportModal
+        isOpen={isSupportOpen}
+        onClose={() => setIsSupportOpen(false)}
+        onOpenLink={(url) => openLink(url)}
       />
 
       {/* Active Checkout & Invoice Modal */}

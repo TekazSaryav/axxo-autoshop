@@ -210,5 +210,55 @@ class SellAuthService {
             throw err;
         }
     }
+    async getFeedbacks() {
+        try {
+            const res = await fetch(`${config.sellauthBaseUrl}/shops/${config.sellauthShopId}/feedbacks?per_page=25`, {
+                headers: this.headers
+            });
+            if (!res.ok) {
+                throw new Error(`SellAuth Feedbacks error: ${res.status}`);
+            }
+            const data = (await res.json());
+            const feedbacks = (data.data || []).map((f) => ({
+                id: f.id,
+                rating: f.rating || 5,
+                message: f.message || null,
+                date: f.created_at,
+                product: f.invoice?.items?.[0]?.product?.name || f.invoice?.items?.[0]?.custom_name || 'Article Tekaz Market'
+            }));
+            return {
+                feedbacks,
+                total: data.total || feedbacks.length,
+                averageRating: 5.0
+            };
+        }
+        catch (err) {
+            console.error('Error fetching feedbacks:', err.message);
+            return { feedbacks: [], total: 0, averageRating: 5.0 };
+        }
+    }
+    async getRestocks() {
+        try {
+            const { products } = await this.getProducts();
+            const inStock = products.filter(p => {
+                if (p.variants && p.variants.length > 0) {
+                    return p.variants.some(v => v.stock === null || v.stock === -1 || v.stock > 0);
+                }
+                return p.stock_count === null || p.stock_count === -1 || p.stock_count > 0;
+            });
+            return inStock.slice(0, 15).map(p => ({
+                id: p.id,
+                name: p.name,
+                price: p.variants?.[0]?.price || p.price || '0.00',
+                stock: p.variants?.[0]?.stock ?? p.stock_count ?? null,
+                category: p.category?.name || 'Général',
+                updated_at: p.updated_at || new Date().toISOString()
+            }));
+        }
+        catch (err) {
+            console.error('Error getting restocks:', err.message);
+            return [];
+        }
+    }
 }
 export const sellauthService = new SellAuthService();
