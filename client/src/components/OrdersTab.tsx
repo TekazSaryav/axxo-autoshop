@@ -18,42 +18,55 @@ export const OrdersTab: React.FC<OrdersTabProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/80 backdrop-blur-sm animate-fade-in">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/85 backdrop-blur-md animate-fade-in">
       <div
-        className="w-full max-w-lg bg-gray-900 border-t border-white/10 rounded-t-3xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden animate-slide-up"
+        className="w-full max-w-lg bg-[#0d1322] border-t border-white/10 rounded-t-3xl max-h-[88vh] flex flex-col shadow-2xl overflow-hidden animate-slide-up"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="p-4 border-b border-white/10 flex items-center justify-between bg-gray-950/80">
-          <div className="flex items-center gap-2">
-            <PackageCheck className="w-5 h-5 text-indigo-400" />
-            <h2 className="font-bold text-base text-white">Historique de mes commandes</h2>
+        {/* Mobile Pull Indicator */}
+        <div className="w-12 h-1.5 bg-gray-700/60 rounded-full mx-auto my-2.5 flex-shrink-0" />
+
+        <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between bg-gray-950/80">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-indigo-600/20 text-indigo-400 flex items-center justify-center border border-indigo-500/20">
+              <PackageCheck className="w-4 h-4" />
+            </div>
+            <div>
+              <h2 className="font-extrabold text-base text-white">Mes Commandes</h2>
+              <p className="text-[11px] text-gray-400 font-medium">Historique d'achats et factures</p>
+            </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-full bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white transition"
+            className="w-10 h-10 rounded-full bg-gray-850 hover:bg-gray-750 text-gray-400 hover:text-white transition flex items-center justify-center cursor-pointer border border-white/5"
+            aria-label="Fermer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4 space-y-3">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-3">
           {orders.length === 0 ? (
-            <div className="py-12 text-center text-gray-400 flex flex-col items-center">
-              <PackageCheck className="w-12 h-12 stroke-1 opacity-40 mb-3 text-indigo-400" />
-              <p className="font-medium text-sm text-gray-300">Aucune commande enregistrée</p>
-              <p className="text-xs text-gray-500 mt-1">Vos futurs achats apparaîtront ici.</p>
+            <div className="py-14 text-center text-gray-400 flex flex-col items-center">
+              <div className="w-16 h-16 rounded-2xl bg-gray-900 border border-white/5 flex items-center justify-center mb-3">
+                <PackageCheck className="w-8 h-8 stroke-1 text-indigo-400/50" />
+              </div>
+              <p className="font-bold text-base text-gray-200 mb-1">Aucune commande récente</p>
+              <p className="text-xs text-gray-500 max-w-xs">
+                Vos achats et livrables apparaîtront automatiquement ici dès que vous aurez validé un panier.
+              </p>
             </div>
           ) : (
             orders.map((ord) => (
               <div
                 key={ord.invoiceId}
                 onClick={() => onOpenOrder(ord.invoiceId, ord.url)}
-                className="p-3.5 rounded-2xl bg-gray-800/40 border border-white/5 hover:border-indigo-500/40 cursor-pointer transition flex items-center justify-between gap-3"
+                className="p-4 rounded-2xl bg-gray-900/80 border border-white/5 hover:border-indigo-500/40 cursor-pointer transition flex items-center justify-between gap-3 shadow-sm active:scale-[0.99]"
               >
                 <div>
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="font-bold text-sm text-white">
-                      Facture #{ord.invoiceId}
+                    <span className="font-black text-sm text-white font-mono">
+                      #{ord.invoiceId}
                     </span>
                     <span
                       className={`text-[10px] px-2 py-0.5 rounded-full font-bold flex items-center gap-1 ${
@@ -76,7 +89,7 @@ export const OrdersTab: React.FC<OrdersTabProps> = ({
                     </span>
                   </div>
 
-                  <p className="text-xs text-gray-400">
+                  <p className="text-[11px] text-gray-400">
                     {new Date(ord.date).toLocaleDateString('fr-FR', {
                       day: '2-digit',
                       month: 'short',
@@ -88,18 +101,18 @@ export const OrdersTab: React.FC<OrdersTabProps> = ({
 
                   <div className="mt-2 text-xs text-gray-300">
                     {ord.items.map((i, idx) => (
-                      <span key={idx} className="block text-[11px] text-gray-400">
+                      <span key={idx} className="block text-[11px] text-gray-300 font-medium">
                         • {i.title} {i.variant ? `(${i.variant})` : ''} x{i.quantity}
                       </span>
                     ))}
                   </div>
                 </div>
 
-                <div className="text-right flex flex-col items-end gap-2">
-                  <span className="font-extrabold text-sm text-indigo-300">
+                <div className="text-right flex flex-col items-end gap-2.5">
+                  <span className="font-black text-base text-indigo-300 font-mono">
                     {ord.total.toFixed(2)} {ord.currency}
                   </span>
-                  <div className="p-2 rounded-xl bg-gray-700/60 text-gray-300">
+                  <div className="w-9 h-9 rounded-xl bg-gray-800 hover:bg-indigo-600 text-gray-300 hover:text-white transition flex items-center justify-center border border-white/5">
                     <ExternalLink className="w-4 h-4" />
                   </div>
                 </div>

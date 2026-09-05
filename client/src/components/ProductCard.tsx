@@ -1,6 +1,6 @@
 import React from 'react';
 import type { Product } from '../types.js';
-import { ShoppingCart, Check, Zap, Eye } from 'lucide-react';
+import { ShoppingBag, Zap, Eye } from 'lucide-react';
 
 interface ProductCardProps {
   product: Product;
@@ -50,34 +50,37 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   return (
     <div
       onClick={() => onOpenDetails(product)}
-      className="group glass-card rounded-2xl p-3.5 flex flex-col justify-between transition-all duration-200 hover:translate-y-[-2px] cursor-pointer relative overflow-hidden"
+      className="group glass-card rounded-2xl p-3 flex flex-col justify-between cursor-pointer relative overflow-hidden border border-white/5 active:scale-[0.98] select-none"
     >
-      {/* Top Banner / Image */}
-      <div className="relative w-full aspect-[16/10] rounded-xl overflow-hidden bg-gray-800/60 mb-3">
+      {/* Top Media Banner */}
+      <div className="relative w-full aspect-[16/10] rounded-xl overflow-hidden bg-gray-950/80 mb-2.5">
         {imageUrl ? (
           <img
             src={imageUrl}
             alt={product.name}
-            className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-300"
+            className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500 ease-out"
             loading="lazy"
           />
         ) : (
-          <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-indigo-900/30 to-purple-900/20 text-indigo-400">
+          <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-indigo-950/40 via-purple-950/20 to-slate-900 text-indigo-400">
             <Zap className="w-8 h-8 opacity-40 mb-1" />
-            <span className="text-[11px] font-medium text-gray-400">Tekaz Digital</span>
+            <span className="text-[10px] font-semibold text-gray-400 tracking-wider uppercase">Tekaz</span>
           </div>
         )}
 
+        {/* Subtle Bottom Gradient on Image */}
+        <div className="absolute inset-0 bg-gradient-to-t from-gray-950/80 via-transparent to-black/20 pointer-events-none" />
+
         {/* Category Badge */}
         {product.category && (
-          <span className="absolute top-2 left-2 px-2 py-0.5 rounded-lg bg-black/60 backdrop-blur-md text-[10px] font-semibold text-indigo-300 border border-white/10">
+          <span className="absolute top-2 left-2 px-2 py-0.5 rounded-lg bg-black/70 backdrop-blur-md text-[10px] font-bold text-indigo-300 border border-white/10 shadow-sm">
             {product.category.name}
           </span>
         )}
 
-        {/* Stock Badge */}
-        <span
-          className={`absolute top-2 right-2 px-2 py-0.5 rounded-lg text-[10px] font-bold backdrop-blur-md flex items-center gap-1 ${
+        {/* Live Stock Pill */}
+        <div
+          className={`absolute top-2 right-2 px-2 py-0.5 rounded-lg text-[10px] font-bold backdrop-blur-md flex items-center gap-1.5 shadow-sm ${
             !isInStock
               ? 'bg-rose-500/80 text-white'
               : isUnlimited
@@ -85,38 +88,36 @@ export const ProductCard: React.FC<ProductCardProps> = ({
               : 'bg-amber-500/80 text-white'
           }`}
         >
-          {isInStock ? (
-            <>
-              <Check className="w-3 h-3" />
-              {isUnlimited ? 'En stock' : `${totalStock} restants`}
-            </>
-          ) : (
-            'Épuisé'
-          )}
-        </span>
+          <span
+            className={`w-1.5 h-1.5 rounded-full ${
+              isInStock ? 'bg-white animate-pulse' : 'bg-rose-200'
+            }`}
+          />
+          <span>{isInStock ? (isUnlimited ? 'Dispo 24/7' : `${totalStock} restants`) : 'Épuisé'}</span>
+        </div>
       </div>
 
       {/* Info Section */}
       <div className="flex-1 flex flex-col justify-between">
         <div>
-          <h3 className="font-semibold text-sm text-gray-100 line-clamp-2 leading-snug mb-1 group-hover:text-indigo-300 transition-colors">
+          <h3 className="font-bold text-sm text-gray-100 line-clamp-2 leading-snug mb-1 group-hover:text-indigo-300 transition-colors">
             {product.name}
           </h3>
 
           {product.variants && product.variants.length > 1 && (
-            <p className="text-[11px] text-gray-400 mb-2">
-              {product.variants.length} options disponibles
+            <p className="text-[11px] text-gray-400 font-medium mb-1.5">
+              {product.variants.length} formules au choix
             </p>
           )}
         </div>
 
         {/* Price & Action Row */}
-        <div className="flex items-center justify-between pt-2 border-t border-white/5 mt-2">
+        <div className="flex items-center justify-between pt-2 border-t border-white/5 mt-1.5">
           <div>
-            <span className="text-[10px] text-gray-400 block uppercase tracking-wider font-semibold">
-              {product.variants && product.variants.length > 1 ? 'Dès' : 'Prix'}
+            <span className="text-[9px] text-gray-400 block uppercase tracking-wider font-extrabold">
+              {product.variants && product.variants.length > 1 ? 'À partir de' : 'Prix unique'}
             </span>
-            <span className="font-bold text-base text-white tracking-tight">
+            <span className="font-extrabold text-base text-white tracking-tight font-mono">
               {minPrice.toFixed(2)} {product.currency || '€'}
             </span>
           </div>
@@ -127,8 +128,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                 e.stopPropagation();
                 onOpenDetails(product);
               }}
-              className="p-2 rounded-xl bg-gray-800/80 hover:bg-gray-700/80 text-gray-300 hover:text-white transition"
-              title="Voir les détails"
+              className="w-9 h-9 rounded-xl bg-gray-800/90 hover:bg-gray-700 active:scale-95 text-gray-300 hover:text-white transition flex items-center justify-center border border-white/5 cursor-pointer"
+              title="Détails"
+              aria-label="Voir les détails"
             >
               <Eye className="w-4 h-4" />
             </button>
@@ -139,10 +141,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                   e.stopPropagation();
                   onQuickAdd(product);
                 }}
-                className="p-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white transition shadow-md shadow-indigo-600/30"
+                className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 active:scale-95 text-white transition shadow-md shadow-indigo-600/30 flex items-center justify-center cursor-pointer"
                 title="Ajouter au panier"
+                aria-label="Ajouter au panier"
               >
-                <ShoppingCart className="w-4 h-4" />
+                <ShoppingBag className="w-4 h-4" />
               </button>
             )}
           </div>
