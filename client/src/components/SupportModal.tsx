@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Send, Bell, Star, CheckCircle2, ShieldCheck, Zap, Sparkles, MessageCircle } from 'lucide-react';
+import { X, Send, Bell, Star, CheckCircle2, ShieldCheck, Zap, Sparkles, MessageCircle, ExternalLink } from 'lucide-react';
 import { fetchFeedbacks } from '../services/api.js';
 import { useLanguage } from '../i18n.js';
 
@@ -234,6 +234,21 @@ export const SupportModal: React.FC<SupportModalProps> = ({
                   </div>
                 ))
               )}
+
+              {/* View all reviews on tekaz.xyz/feedback */}
+              <div className="pt-2 pb-1">
+                <button
+                  onClick={() => onOpenLink('https://tekaz.xyz/feedback')}
+                  className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 active:scale-[0.98] text-white font-extrabold text-sm transition shadow-lg shadow-indigo-600/30 flex items-center justify-center gap-2 cursor-pointer border border-indigo-400/25"
+                >
+                  <Star className="w-4 h-4 text-amber-300 fill-amber-300" />
+                  <span>{t.view_all_reviews}</span>
+                  <ExternalLink className="w-4 h-4 opacity-80" />
+                </button>
+                <p className="text-[11px] text-gray-400 text-center mt-2 font-medium">
+                  {t.view_all_reviews_desc}
+                </p>
+              </div>
             </div>
           )}
 
