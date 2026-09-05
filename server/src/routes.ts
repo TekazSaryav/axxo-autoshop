@@ -70,6 +70,114 @@ apiRouter.post('/checkout', async (req: Request, res: Response) => {
   }
 });
 
+// POST /api/checkout/stars (Telegram Stars Checkout)
+apiRouter.post('/checkout/stars', async (req: Request, res: Response) => {
+  try {
+    const { cart, email, telegram_chat_id } = req.body;
+
+    if (!cart || !Array.isArray(cart) || cart.length === 0) {
+      return res.status(400).json({ success: false, error: 'Le panier est vide' });
+    }
+
+    if (!email || !email.includes('@')) {
+      return res.status(400).json({ success: false, error: 'Une adresse email valide est requise' });
+    }
+
+    // 1. Fetch current live products to verify prices and stock
+    const { products } = await sellauthService.getProducts();
+    let eurTotal = 0;
+    const orderItems: any[] = [];
+
+    for (const item of cart) {
+      const prod = products.find(p => p.id === item.productId);
+      if (!prod) {
+        return res.status(400).json({ success: false, error: `Produit introuvable (ID: ${item.productId})` });
+      }
+
+      const variant = prod.variants?.find(v => v.id === item.variantId) || prod.variants?.[0];
+      const itemPrice = parseFloat(variant?.price || prod.price || '0');
+      const qty = item.quantity || 1;
+
+      eurTotal += itemPrice * qty;
+      orderItems.push({
+        productId: prod.id,
+        variantId: variant?.id,
+        name: prod.name,
+        variantName: variant?.name,
+        priceEur: itemPrice,
+        quantity: qty
+      });
+    }
+
+    // 2. Compute Stars price with 30% buffer:
+    // Base: 1 EUR ~ 50 Stars.
+    // With 30% Apple/Google fee coverage: 1 EUR = ~65 Stars. Minimum 10 Stars.
+    const rawStars = Math.round(eurTotal * 65);
+    const starsAmount = Math.max(10, rawStars);
+
+    const orderId = `stars_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+
+    // 3. Save order record in memory
+    const { bot, starsOrders } = await import('./bot.js');
+    starsOrders.set(orderId, {
+      orderId,
+      chatId: telegram_chat_id || 0,
+      email,
+      items: orderItems,
+      eurTotal,
+      starsAmount,
+      status: 'pending',
+      createdAt: new Date().toISOString()
+    });
+
+    // 4. Generate official Telegram Stars invoice link via bot API
+    const itemNames = orderItems.map(i => `${i.name} x${i.quantity}`).join(', ');
+    const shortTitle = (itemNames.length > 30 ? itemNames.substring(0, 27) + '...' : itemNames) || 'Commande Tekaz';
+    const invoiceLink = await bot.api.createInvoiceLink(
+      shortTitle,
+      `Commande Tekaz Market - Livraison 24/7 pour ${email}`,
+      JSON.stringify({ orderId, email }),
+      '', // provider_token must be empty string for XTR (Telegram Stars)
+      'XTR',
+      [
+        {
+          label: shortTitle,
+          amount: starsAmount
+        }
+      ]
+    );
+
+    res.json({
+      success: true,
+      orderId,
+      starsPrice: starsAmount,
+      eurTotal,
+      invoiceLink
+    });
+  } catch (err: any) {
+    console.error('Stars checkout error:', err.message);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// GET /api/orders/stars/:orderId
+apiRouter.get('/orders/stars/:orderId', async (req: Request, res: Response) => {
+  try {
+    const { starsOrders } = await import('./bot.js');
+    const order = starsOrders.get(String(req.params.orderId));
+    if (!order) {
+      return res.status(404).json({ success: false, error: 'Commande introuvable' });
+    }
+    res.json({
+      success: true,
+      isPaid: order.status === 'paid',
+      order
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // GET /api/invoices/:id
 apiRouter.get('/invoices/:id', async (req: Request, res: Response) => {
   try {

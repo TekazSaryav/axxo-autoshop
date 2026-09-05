@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useTelegram } from './hooks/useTelegram.js';
-import { fetchShopInfo, fetchProducts, createCheckout } from './services/api.js';
+import { fetchShopInfo, fetchProducts, createCheckout, createStarsCheckout } from './services/api.js';
 import type { Product, Variant, Category, CartItem, ShopInfo, SavedOrder } from './types.js';
 
 import { Navbar } from './components/Navbar.js';
@@ -17,7 +17,7 @@ import { LanguageProvider, useLanguage } from './i18n.js';
 import { Sparkles, ShieldCheck, Zap, RefreshCw, AlertCircle, ArrowRight } from 'lucide-react';
 
 function ShopContent() {
-  const { user, haptic, openLink } = useTelegram();
+  const { user, haptic, openLink, openInvoice } = useTelegram();
   const { t } = useLanguage();
 
   // Shop & catalog state
@@ -37,6 +37,7 @@ function ShopContent() {
   const [isOrdersOpen, setIsOrdersOpen] = useState(false);
   const [isSupportOpen, setIsSupportOpen] = useState(false);
   const [isCheckingOut, setIsCheckingOut] = useState(false);
+  const [isCheckingOutStars, setIsCheckingOutStars] = useState(false);
   const [activeCheckout, setActiveCheckout] = useState<{ invoiceId: number; invoiceUrl: string } | null>(null);
 
   // Check URL tab parameter on mount
@@ -197,6 +198,59 @@ function ShopContent() {
       alert(`Erreur lors de la commande : ${err.message}`);
     } finally {
       setIsCheckingOut(false);
+    }
+  };
+
+  // Telegram Stars Checkout execution
+  const handleCheckoutStars = async (email: string) => {
+    if (cart.length === 0) return;
+    setIsCheckingOutStars(true);
+    haptic.medium();
+
+    try {
+      const formattedCart = cart.map((item) => ({
+        productId: item.product.id,
+        variantId: item.variant.id,
+        quantity: item.quantity
+      }));
+
+      const res = await createStarsCheckout(formattedCart, email, user?.id);
+
+      // Open native Telegram Stars invoice sheet
+      openInvoice(res.invoiceLink, (status) => {
+        if (status === 'paid') {
+          haptic.success();
+          const newOrder: SavedOrder = {
+            invoiceId: res.orderId,
+            url: res.invoiceLink,
+            email,
+            date: new Date().toISOString(),
+            total: res.starsPrice,
+            currency: '⭐',
+            items: cart.map((i) => ({
+              title: i.product.name,
+              variant: i.variant.name,
+              quantity: i.quantity
+            })),
+            status: 'completed'
+          };
+
+          setSavedOrders((prev) => [newOrder, ...prev]);
+          setCart([]);
+          setIsCartOpen(false);
+          alert(t.stars_payment_success || 'Paiement Stars réussi ! Votre commande a été enregistrée et confirmée dans Telegram.');
+        } else if (status === 'failed') {
+          haptic.error();
+          alert(t.stars_payment_failed || 'Le paiement en Stars a échoué ou a été annulé.');
+        } else if (status === 'cancelled') {
+          haptic.light();
+        }
+      });
+    } catch (err: any) {
+      haptic.error();
+      alert(`Erreur Stars : ${err.message}`);
+    } finally {
+      setIsCheckingOutStars(false);
     }
   };
 
@@ -425,7 +479,9 @@ function ShopContent() {
         onUpdateQuantity={handleUpdateQuantity}
         onRemoveItem={handleRemoveItem}
         onCheckout={handleCheckout}
+        onCheckoutStars={handleCheckoutStars}
         isCheckingOut={isCheckingOut}
+        isCheckingOutStars={isCheckingOutStars}
         telegramUser={user}
       />
 
@@ -435,7 +491,11 @@ function ShopContent() {
         onClose={() => setIsOrdersOpen(false)}
         orders={savedOrders}
         onOpenOrder={(invoiceId, url) => {
-          setActiveCheckout({ invoiceId: Number(invoiceId), invoiceUrl: url });
+          if (typeof invoiceId === 'string' && invoiceId.startsWith('stars_')) {
+            openInvoice(url);
+          } else {
+            setActiveCheckout({ invoiceId: Number(invoiceId), invoiceUrl: url });
+          }
         }}
       />
 

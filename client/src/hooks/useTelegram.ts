@@ -48,6 +48,14 @@ export function useTelegram() {
     }
   }, [tg]);
 
+  const openInvoice = useCallback((url: string, callback?: (status: 'paid' | 'cancelled' | 'failed' | 'pending') => void) => {
+    if (tg?.openInvoice) {
+      tg.openInvoice(url, callback);
+    } else {
+      window.open(url, '_blank');
+    }
+  }, [tg]);
+
   const close = useCallback(() => {
     if (tg?.close) {
       tg.close();
@@ -60,6 +68,7 @@ export function useTelegram() {
     isInTelegram: !!tg?.initData,
     haptic,
     openLink,
+    openInvoice,
     close,
     mainButton: tg?.MainButton,
     backButton: tg?.BackButton,

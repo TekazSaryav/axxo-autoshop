@@ -44,6 +44,38 @@ export async function createCheckout(
   return data;
 }
 
+export async function createStarsCheckout(
+  cart: Array<{ productId: number; variantId?: number; quantity: number }>,
+  email: string,
+  telegramChatId?: number | string
+): Promise<{ success: boolean; invoiceLink: string; starsPrice: number; orderId: string }> {
+  const res = await fetch('/api/checkout/stars', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      cart,
+      email,
+      telegram_chat_id: telegramChatId
+    })
+  });
+  const data = await res.json();
+  if (!res.ok || !data.success) {
+    throw new Error(data.error || 'Stars Checkout failed');
+  }
+  return data;
+}
+
+export async function checkStarsPayment(orderId: string): Promise<{ success: boolean; isPaid: boolean; order?: any }> {
+  const res = await fetch(`/api/orders/stars/${orderId}`);
+  const data = await res.json();
+  if (!res.ok || !data.success) {
+    throw new Error(data.error || 'Check failed');
+  }
+  return data;
+}
+
 export async function fetchInvoice(invoiceId: string | number) {
   const res = await fetch(`/api/invoices/${invoiceId}`);
   const data = await res.json();

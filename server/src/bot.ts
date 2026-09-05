@@ -150,6 +150,82 @@ bot.command(['help', 'support'], async (ctx) => {
   await ctx.reply(helpMsg, { parse_mode: 'Markdown', reply_markup: keyboard });
 });
 
+// Storage for pending & completed Telegram Stars orders
+export interface StarsOrder {
+  orderId: string;
+  chatId: number | string;
+  email: string;
+  items: Array<{
+    productId: number;
+    variantId?: number;
+    name: string;
+    variantName?: string;
+    priceEur: number;
+    quantity: number;
+  }>;
+  eurTotal: number;
+  starsAmount: number;
+  status: 'pending' | 'paid';
+  delivered?: string;
+  createdAt: string;
+  paidAt?: string;
+  telegramPaymentChargeId?: string;
+}
+
+export const starsOrders = new Map<string, StarsOrder>();
+
+// Handle pre_checkout_query (Telegram requires an immediate answer within 10s to approve the Stars purchase)
+bot.on('pre_checkout_query', async (ctx) => {
+  try {
+    const payloadStr = ctx.preCheckoutQuery.invoice_payload;
+    const payload = JSON.parse(payloadStr);
+    const order = starsOrders.get(payload.orderId);
+
+    if (!order) {
+      return await ctx.answerPreCheckoutQuery(false, {
+        error_message: 'Commande introuvable ou expirée. Veuillez réessayer.'
+      });
+    }
+
+    await ctx.answerPreCheckoutQuery(true);
+  } catch (err: any) {
+    console.error('Error answering pre_checkout_query:', err.message);
+    await ctx.answerPreCheckoutQuery(false, { error_message: 'Erreur lors de la validation du paiement.' });
+  }
+});
+
+// Handle successful_payment (Stars received by bot!)
+bot.on(':successful_payment', async (ctx) => {
+  try {
+    const payment = ctx.message?.successful_payment;
+    if (!payment) return;
+
+    const payload = JSON.parse(payment.invoice_payload);
+    const order = starsOrders.get(payload.orderId);
+
+    if (order) {
+      order.status = 'paid';
+      order.paidAt = new Date().toISOString();
+      order.telegramPaymentChargeId = payment.telegram_payment_charge_id;
+
+      // Delivery notification text
+      let text = `🌟 *Paiement en Telegram Stars Confirmé !* (${payment.total_amount} ⭐)\n\n`;
+      text += `📦 *Articles commandés :*\n`;
+      for (const item of order.items) {
+        text += `• ${item.name} ${item.variantName ? `(${item.variantName})` : ''} x${item.quantity}\n`;
+      }
+      text += `\n📧 *Email :* \`${order.email}\`\n`;
+      text += `🆔 *Commande :* \`${order.orderId}\`\n\n`;
+      text += `ℹ️ Vos accès et livrables sont disponibles dans la boutique (section Mes Commandes). Si votre article nécessite une configuration manuelle ou un remplacement, notre support @notthatid est à votre disposition 24/7 !\n\n`;
+      text += `Merci pour votre achat sur Tekaz Market ! 🙏`;
+
+      await ctx.reply(text, { parse_mode: 'Markdown' });
+    }
+  } catch (err: any) {
+    console.error('Error handling successful_payment:', err.message);
+  }
+});
+
 // Function to notify user when an order is completed
 export async function notifyUserOrderCompleted(chatId: number | string, invoice: any) {
   try {

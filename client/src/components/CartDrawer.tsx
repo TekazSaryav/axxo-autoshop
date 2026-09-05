@@ -11,7 +11,9 @@ interface CartDrawerProps {
   onUpdateQuantity: (index: number, quantity: number) => void;
   onRemoveItem: (index: number) => void;
   onCheckout: (email: string) => void;
+  onCheckoutStars: (email: string) => void;
   isCheckingOut: boolean;
+  isCheckingOutStars: boolean;
   telegramUser?: { id: number; username?: string; first_name?: string };
 }
 
@@ -23,7 +25,9 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   onUpdateQuantity,
   onRemoveItem,
   onCheckout,
-  isCheckingOut
+  onCheckoutStars,
+  isCheckingOut,
+  isCheckingOutStars
 }) => {
   const { t } = useLanguage();
   const [email, setEmail] = useState(() => {
@@ -44,13 +48,28 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
     return sum + parseFloat(item.variant.price || '0') * item.quantity;
   }, 0);
 
-  const handleCheckoutClick = () => {
+  // Compute stars total (65 stars per 1 EUR with 30% Apple/Google fee coverage)
+  const starsTotal = Math.max(10, Math.round(total * 65));
+
+  const validateEmail = () => {
     if (!email || !email.includes('@') || !email.includes('.')) {
       setEmailError(t.email_invalid);
-      return;
+      return false;
     }
     setEmailError('');
-    onCheckout(email);
+    return true;
+  };
+
+  const handleCheckoutClick = () => {
+    if (validateEmail()) {
+      onCheckout(email);
+    }
+  };
+
+  const handleCheckoutStarsClick = () => {
+    if (validateEmail()) {
+      onCheckoutStars(email);
+    }
   };
 
   return (
@@ -207,31 +226,72 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
           )}
         </div>
 
-        {/* Footer Actions */}
+        {/* Footer Actions: Dual Payment Gateways (Crypto/Card & Telegram Stars) */}
         {cart.length > 0 && (
-          <div className="p-4 sm:p-5 border-t border-white/10 bg-gray-950 space-y-3.5 flex-shrink-0">
+          <div className="p-4 sm:p-5 border-t border-white/10 bg-gray-950 space-y-3 flex-shrink-0">
             <div className="flex items-center justify-between text-sm">
               <span className="text-gray-400 font-medium">{t.total_cart}</span>
-              <span className="text-2xl font-black text-white font-mono tracking-tight">
-                {total.toFixed(2)} {currency}
-              </span>
+              <div className="text-right">
+                <span className="text-2xl font-black text-white font-mono tracking-tight">
+                  {total.toFixed(2)} {currency}
+                </span>
+                <span className="text-xs font-black text-amber-400 font-mono block">
+                  ou {starsTotal} ⭐
+                </span>
+              </div>
             </div>
 
+            {/* Telegram Stars Button */}
             <button
-              disabled={isCheckingOut}
+              disabled={isCheckingOut || isCheckingOutStars}
+              onClick={handleCheckoutStarsClick}
+              className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 active:scale-[0.99] text-gray-950 font-black text-sm transition shadow-xl shadow-amber-500/25 flex items-center justify-between cursor-pointer disabled:opacity-50"
+            >
+              {isCheckingOutStars ? (
+                <div className="flex items-center gap-2 mx-auto">
+                  <div className="w-4 h-4 border-2 border-gray-950/30 border-t-gray-950 rounded-full animate-spin" />
+                  <span>{t.paying_stars}</span>
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-center gap-2">
+                    <span className="text-base leading-none">⭐</span>
+                    <div className="text-left">
+                      <span className="block leading-tight">{t.pay_stars_btn}</span>
+                      <span className="text-[10px] font-bold text-amber-950/80 block -mt-0.5">
+                        {t.stars_fee_included}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5 font-mono text-sm font-black">
+                    <span>{starsTotal} ⭐</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </div>
+                </>
+              )}
+            </button>
+
+            {/* Standard Crypto & Card SellAuth Button */}
+            <button
+              disabled={isCheckingOut || isCheckingOutStars}
               onClick={handleCheckoutClick}
-              className="w-full py-4 px-4 rounded-2xl bg-gradient-to-r from-indigo-600 via-indigo-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 active:scale-[0.99] text-white font-black text-sm transition shadow-xl shadow-indigo-600/30 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+              className="w-full py-3 px-4 rounded-2xl bg-gray-900 hover:bg-gray-850 active:scale-[0.99] text-gray-200 hover:text-white font-extrabold text-xs transition border border-white/10 flex items-center justify-between cursor-pointer disabled:opacity-50"
             >
               {isCheckingOut ? (
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 mx-auto">
                   <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                   <span>{t.paying}</span>
                 </div>
               ) : (
                 <>
-                  <Lock className="w-4 h-4" />
-                  <span>{t.pay_btn}</span>
-                  <ArrowRight className="w-4 h-4" />
+                  <div className="flex items-center gap-2">
+                    <Lock className="w-3.5 h-3.5 text-indigo-400" />
+                    <span>{t.pay_btn}</span>
+                  </div>
+                  <div className="flex items-center gap-1 font-mono text-xs font-bold text-gray-400">
+                    <span>{total.toFixed(2)} {currency}</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </div>
                 </>
               )}
             </button>
