@@ -31,6 +31,7 @@ export interface Product {
   variants: Variant[];
   stock_count: number | null;
   deliverables_type?: string;
+  instructions?: string | null;
 }
 
 export interface Category {

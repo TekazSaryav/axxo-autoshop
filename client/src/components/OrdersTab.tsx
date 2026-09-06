@@ -63,61 +63,94 @@ export const OrdersTab: React.FC<OrdersTabProps> = ({
               <div
                 key={ord.invoiceId}
                 onClick={() => onOpenOrder(ord.invoiceId, ord.url)}
-                className="p-4 rounded-2xl bg-gray-900/80 border border-white/5 hover:border-indigo-500/40 cursor-pointer transition flex items-center justify-between gap-3 shadow-sm active:scale-[0.99]"
+                className="p-4 rounded-2xl bg-gray-900/80 border border-white/5 hover:border-indigo-500/40 cursor-pointer transition flex flex-col gap-3 shadow-sm active:scale-[0.99]"
               >
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-black text-sm text-white font-mono">
-                      #{ord.invoiceId}
-                    </span>
-                    <span
-                      className={`text-[10px] px-2 py-0.5 rounded-full font-bold flex items-center gap-1 ${
-                        ord.status === 'completed' || ord.status === 'paid'
-                          ? 'bg-emerald-500/20 text-emerald-400'
-                          : 'bg-amber-500/20 text-amber-400'
-                      }`}
-                    >
-                      {ord.status === 'completed' || ord.status === 'paid' ? (
-                        <>
-                          <CheckCircle2 className="w-3 h-3" />
-                          {t.paid_status}
-                        </>
-                      ) : (
-                        <>
-                          <Clock className="w-3 h-3" />
-                          {t.pending_status}
-                        </>
-                      )}
-                    </span>
-                  </div>
-
-                  <p className="text-[11px] text-gray-400">
-                    {new Date(ord.date).toLocaleDateString(language === 'fr' ? 'fr-FR' : 'en-US', {
-                      day: '2-digit',
-                      month: 'short',
-                      year: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })}
-                  </p>
-
-                  <div className="mt-2 text-xs text-gray-300">
-                    {ord.items.map((i, idx) => (
-                      <span key={idx} className="block text-[11px] text-gray-300 font-medium">
-                        • {i.title} {i.variant ? `(${i.variant})` : ''} x{i.quantity}
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="font-black text-sm text-white font-mono">
+                        #{ord.invoiceId}
                       </span>
-                    ))}
+                      <span
+                        className={`text-[10px] px-2 py-0.5 rounded-full font-bold flex items-center gap-1 ${
+                          ord.status === 'completed' || ord.status === 'paid'
+                            ? 'bg-emerald-500/20 text-emerald-400'
+                            : 'bg-amber-500/20 text-amber-400'
+                        }`}
+                      >
+                        {ord.status === 'completed' || ord.status === 'paid' ? (
+                          <>
+                            <CheckCircle2 className="w-3 h-3" />
+                            {t.paid_status}
+                          </>
+                        ) : (
+                          <>
+                            <Clock className="w-3 h-3" />
+                            {t.pending_status}
+                          </>
+                        )}
+                      </span>
+                    </div>
+
+                    <p className="text-[11px] text-gray-400">
+                      {new Date(ord.date).toLocaleDateString(language === 'fr' ? 'fr-FR' : 'en-US', {
+                        day: '2-digit',
+                        month: 'short',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </p>
+
+                    <div className="mt-2 text-xs text-gray-300">
+                      {ord.items.map((i, idx) => (
+                        <span key={idx} className="block text-[11px] text-gray-300 font-medium">
+                          • {i.title} {i.variant ? `(${i.variant})` : ''} x{i.quantity}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="text-right flex flex-col items-end gap-2.5">
+                    <span className="font-black text-base text-indigo-300 font-mono">
+                      {ord.total.toFixed(2)} {ord.currency}
+                    </span>
+                    <div className="w-9 h-9 rounded-xl bg-gray-800 hover:bg-indigo-600 text-gray-300 hover:text-white transition flex items-center justify-center border border-white/5">
+                      <ExternalLink className="w-4 h-4" />
+                    </div>
                   </div>
                 </div>
 
-                <div className="text-right flex flex-col items-end gap-2.5">
-                  <span className="font-black text-base text-indigo-300 font-mono">
-                    {ord.total.toFixed(2)} {ord.currency}
-                  </span>
-                  <div className="w-9 h-9 rounded-xl bg-gray-800 hover:bg-indigo-600 text-gray-300 hover:text-white transition flex items-center justify-center border border-white/5">
-                    <ExternalLink className="w-4 h-4" />
+                {ord.delivered && (
+                  <div
+                    onClick={(e) => e.stopPropagation()}
+                    className="mt-1 p-3 rounded-xl bg-gray-950/90 border border-emerald-500/30 space-y-1.5"
+                  >
+                    <div className="flex items-center justify-between text-[11px] font-bold text-emerald-400">
+                      <span>🔑 {t.deliverables_label}</span>
+                      <span className="text-[10px] text-gray-400 font-normal">Cliquer pour copier</span>
+                    </div>
+                    <pre
+                      onClick={() => {
+                        navigator.clipboard?.writeText(ord.delivered || '');
+                        alert(t.copied || 'Copié !');
+                      }}
+                      className="text-xs text-emerald-300 font-mono whitespace-pre-wrap select-all bg-black/60 p-2.5 rounded-lg border border-white/5 cursor-pointer hover:border-emerald-500/50 transition"
+                    >
+                      {ord.delivered}
+                    </pre>
                   </div>
-                </div>
+                )}
+
+                {ord.instructions && (
+                  <div
+                    onClick={(e) => e.stopPropagation()}
+                    className="mt-1 p-2.5 rounded-xl bg-gray-950/60 border border-white/5 text-[11px] text-gray-300 whitespace-pre-wrap leading-relaxed"
+                  >
+                    <span className="font-bold text-indigo-300 block mb-1">📋 Instructions :</span>
+                    {ord.instructions}
+                  </div>
+                )}
               </div>
             ))
           )}

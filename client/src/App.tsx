@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useTelegram } from './hooks/useTelegram.js';
-import { fetchShopInfo, fetchProducts, createCheckout, createStarsCheckout } from './services/api.js';
+import { fetchShopInfo, fetchProducts, createCheckout, createStarsCheckout, checkStarsPayment } from './services/api.js';
 import type { Product, Variant, Category, CartItem, ShopInfo, SavedOrder } from './types.js';
 
 import { Navbar } from './components/Navbar.js';
@@ -217,9 +217,27 @@ function ShopContent() {
       const res = await createStarsCheckout(formattedCart, email, user?.id);
 
       // Open native Telegram Stars invoice sheet
-      openInvoice(res.invoiceLink, (status) => {
+      openInvoice(res.invoiceLink, async (status) => {
         if (status === 'paid') {
           haptic.success();
+
+          let deliveredStr: string | null = null;
+          let instructionsStr: string | null = null;
+
+          // Fetch delivered serials and instructions from server
+          try {
+            await new Promise((r) => setTimeout(r, 800));
+            const check = await checkStarsPayment(res.orderId);
+            if (check.order?.delivered) {
+              deliveredStr = check.order.delivered;
+            }
+            if (check.order?.instructions) {
+              instructionsStr = check.order.instructions;
+            }
+          } catch (e) {
+            console.warn('Could not fetch immediate delivery details:', e);
+          }
+
           const newOrder: SavedOrder = {
             invoiceId: res.orderId,
             url: res.invoiceLink,
@@ -232,12 +250,15 @@ function ShopContent() {
               variant: i.variant.name,
               quantity: i.quantity
             })),
-            status: 'completed'
+            status: 'completed',
+            delivered: deliveredStr,
+            instructions: instructionsStr
           };
 
           setSavedOrders((prev) => [newOrder, ...prev]);
           setCart([]);
           setIsCartOpen(false);
+          setIsOrdersOpen(true);
           alert(t.stars_payment_success || 'Paiement Stars réussi ! Votre commande a été enregistrée et confirmée dans Telegram.');
         } else if (status === 'failed') {
           haptic.error();

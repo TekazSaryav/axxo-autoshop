@@ -72,6 +72,8 @@ export interface SavedOrder {
     quantity: number;
   }>;
   status: string;
+  delivered?: string | null;
+  instructions?: string | null;
 }
 
 export interface TelegramWebAppUser {
