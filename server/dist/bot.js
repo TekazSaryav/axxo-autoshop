@@ -1,7 +1,7 @@
 import { Bot, InlineKeyboard } from 'grammy';
 import { config } from './config.js';
 import { sellauthService } from './sellauth.js';
-import { addStock, popStock, getStockCount, clearStock, setAdminChatId, getAdminChatId } from './starsStock.js';
+import { addStock, popStock, clearStock, setAdminChatId, getAdminChatId, getAllStock } from './starsStock.js';
 import { getAllResellers, getReseller, isReseller, addReseller, removeReseller } from './resellerStore.js';
 import { saveStarsOrder, getAllStarsOrders } from './starsOrdersStore.js';
 export const bot = new Bot(config.telegramBotToken);
@@ -50,6 +50,12 @@ export function htmlToTelegramText(html) {
 function isFrenchUser(ctx) {
     const code = ctx.from?.language_code?.toLowerCase() || '';
     return code.startsWith('fr');
+}
+// Helper to escape Telegram Markdown special characters in dynamic values
+function escapeMd(text) {
+    if (!text)
+        return '';
+    return String(text).replace(/([_*`\[\]()])/g, '\\$1');
 }
 // Auto-detect and record admin chatId when @notthatid interacts with bot
 bot.use(async (ctx, next) => {
@@ -159,25 +165,30 @@ bot.callbackQuery('admin_stock', async (ctx) => {
         return ctx.answerCallbackQuery({ text: 'Accès refusé', show_alert: true });
     await ctx.answerCallbackQuery();
     try {
-        const { products } = await sellauthService.getProducts();
-        let text = `📦 *État du Stock Manuel Telegram Stars :*\n\n`;
-        for (const p of products) {
-            if (p.variants && p.variants.length > 1) {
-                text += '\n🏷️ *' + p.name + '* (ID: `' + p.id + '`):\n';
-                for (const v of p.variants) {
-                    const count = getStockCount(p.id, v.id);
-                    text += '  • ' + v.name + ' (Variant: `' + v.id + '`) : *' + count + ' en stock*\n';
-                }
-            }
-            else {
-                const count = getStockCount(p.id);
-                text += '• *' + p.name + '* (ID: `' + p.id + '`) : *' + count + ' en stock*\n';
+        const allStock = getAllStock();
+        const stockMap = new Map();
+        for (const entry of allStock) {
+            const key = entry.variantId ? `${entry.productId}_${entry.variantId}` : `${entry.productId}`;
+            stockMap.set(key, entry.serials.length);
+        }
+        const totalStockCount = allStock.reduce((sum, e) => sum + e.serials.length, 0);
+        let text = `📦 *Stock Manuel Telegram Stars*\n\n`;
+        text += `📊 Total articles en stock : *${totalStockCount}*\n\n`;
+        if (allStock.length === 0) {
+            text += `_Aucun stock manuel configuré pour le moment._\n`;
+        }
+        else {
+            text += `*Articles approvisionnés :*\n`;
+            for (const entry of allStock) {
+                const pName = escapeMd(entry.productName);
+                const vName = entry.variantName ? ` \\(${escapeMd(entry.variantName)}\\)` : '';
+                text += `• *${pName}*${vName} : *${entry.serials.length} en stock*\n  └ ID: \`${entry.productId}\`${entry.variantId ? ` | Var: \`${entry.variantId}\`` : ''}\n`;
             }
         }
         text += `\n➕ *Ajouter du stock :*
-\`/addstock <ID_PRODUIT>\`
-suivi de vos comptes (un par ligne)
-\`/clearstock <ID_PRODUIT>\` pour vider
+\`/addstock <ID_PRODUIT> [ID_VARIANTE]\`
+suivi de vos comptes ou clés (un par ligne).
+\`/clearstock <ID_PRODUIT>\` pour vider.
 `;
         const backKb = new InlineKeyboard()
             .text('⬅️ Retour Menu', 'admin_main')
@@ -194,7 +205,8 @@ bot.callbackQuery('admin_orders', async (ctx) => {
     await ctx.answerCallbackQuery();
     try {
         const starsOrdersList = getAllStarsOrders().slice(0, 5);
-        const { invoices } = await sellauthService.getRecentInvoices(1, 5);
+        const { invoices: allInvoices } = await sellauthService.getRecentInvoices(1, 5);
+        const invoices = allInvoices.slice(0, 5);
         let text = `📋 *Dernières Commandes :*\n\n`;
         text += `🌟 *Telegram Stars (Dernières) :*\n`;
         if (starsOrdersList.length === 0) {
@@ -202,7 +214,11 @@ bot.callbackQuery('admin_orders', async (ctx) => {
         }
         else {
             for (const o of starsOrdersList) {
-                text += `• #${o.orderId} - *${o.starsAmount} ⭐* (${o.status === 'paid' ? '✅ Payé' : '⏳ En attente'}) - ` + o.email + `\n`;
+                const orderId = escapeMd(o.orderId);
+                const stars = escapeMd(o.starsAmount);
+                const statusStr = o.status === 'paid' ? '✅ Payé' : '⏳ En attente';
+                const emailStr = escapeMd(o.email);
+                text += `• #${orderId} \\- *${stars} ⭐* \\(${statusStr}\\) \\- ${emailStr}\n`;
             }
         }
         text += `\n💳 *SellAuth (Dernières) :*\n`;
@@ -211,7 +227,12 @@ bot.callbackQuery('admin_orders', async (ctx) => {
         }
         else {
             for (const inv of invoices) {
-                text += `• #${inv.id} - *${inv.price} ${inv.currency}* (${inv.status}) - ` + inv.email + `\n`;
+                const invId = escapeMd(inv.id);
+                const price = escapeMd(inv.price);
+                const curr = escapeMd(inv.currency);
+                const status = escapeMd(inv.status);
+                const email = escapeMd(inv.email);
+                text += `• #${invId} \\- *${price} ${curr}* \\(${status}\\) \\- ${email}\n`;
             }
         }
         const backKb = new InlineKeyboard()
@@ -315,27 +336,69 @@ bot.command('stock', async (ctx) => {
         return ctx.reply("⛔ Cette commande est réservée à l'administrateur @notthatid.");
     }
     try {
-        const { products } = await sellauthService.getProducts();
+        const allStock = getAllStock();
+        const totalStockCount = allStock.reduce((sum, e) => sum + e.serials.length, 0);
         let text = `👑 *Gestionnaire de Stock Telegram Stars (Tekaz)*\n\n`;
-        text += `📦 *État actuel du stock manuel Stars :*\n`;
-        for (const p of products) {
-            if (p.variants && p.variants.length > 1) {
-                text += '\n🏷️ *' + p.name + '* (ID: `' + p.id + '`):\n';
-                for (const v of p.variants) {
-                    const count = getStockCount(p.id, v.id);
-                    text += '  • ' + v.name + ' (Variant: `' + v.id + '`) : *' + count + ' en stock*\n';
-                }
-            }
-            else {
-                const count = getStockCount(p.id);
-                text += '• *' + p.name + '* (ID: `' + p.id + '`) : *' + count + ' en stock*\n';
+        text += `📊 Total articles en stock : *${totalStockCount}*\n\n`;
+        if (allStock.length === 0) {
+            text += `_Aucun stock manuel configuré pour le moment._\n`;
+        }
+        else {
+            text += `*📦 Articles approvisionnés :*\n`;
+            for (const entry of allStock) {
+                const pName = escapeMd(entry.productName);
+                const vName = entry.variantName ? ` \\(${escapeMd(entry.variantName)}\\)` : '';
+                text += `• *${pName}*${vName} : *${entry.serials.length} en stock*\n  └ ID: \`${entry.productId}\`${entry.variantId ? ` | Var: \`${entry.variantId}\`` : ''}\n`;
             }
         }
         text += `\n➕ *Comment ajouter du stock :*
-\`/addstock <ID_PRODUIT>\`
+\`/addstock <ID_PRODUIT> [ID_VARIANTE]\`
 suivi de vos comptes (un par ligne)
 \`/clearstock <ID_PRODUIT>\` pour vider
 `;
+        await ctx.reply(text, { parse_mode: 'Markdown' });
+    }
+    catch (err) {
+        await ctx.reply('❌ Erreur : ' + err.message);
+    }
+});
+// Admin Command: /orders
+bot.command('orders', async (ctx) => {
+    if (!isAdmin(ctx)) {
+        return ctx.reply("⛔ Cette commande est réservée à l'administrateur @notthatid.");
+    }
+    try {
+        const starsOrdersList = getAllStarsOrders().slice(0, 5);
+        const { invoices: allInvoices } = await sellauthService.getRecentInvoices(1, 5);
+        const invoices = allInvoices.slice(0, 5);
+        let text = `📋 *Dernières Commandes :*\n\n`;
+        text += `🌟 *Telegram Stars (Dernières) :*\n`;
+        if (starsOrdersList.length === 0) {
+            text += `_Aucune commande Stars récente_\n`;
+        }
+        else {
+            for (const o of starsOrdersList) {
+                const orderId = escapeMd(o.orderId);
+                const stars = escapeMd(o.starsAmount);
+                const statusStr = o.status === 'paid' ? '✅ Payé' : '⏳ En attente';
+                const emailStr = escapeMd(o.email);
+                text += `• #${orderId} \\- *${stars} ⭐* \\(${statusStr}\\) \\- ${emailStr}\n`;
+            }
+        }
+        text += `\n💳 *SellAuth (Dernières) :*\n`;
+        if (invoices.length === 0) {
+            text += `_Aucune commande SellAuth récente_\n`;
+        }
+        else {
+            for (const inv of invoices) {
+                const invId = escapeMd(inv.id);
+                const price = escapeMd(inv.price);
+                const curr = escapeMd(inv.currency);
+                const status = escapeMd(inv.status);
+                const email = escapeMd(inv.email);
+                text += `• #${invId} \\- *${price} ${curr}* \\(${status}\\) \\- ${email}\n`;
+            }
+        }
         await ctx.reply(text, { parse_mode: 'Markdown' });
     }
     catch (err) {
