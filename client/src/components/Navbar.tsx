@@ -1,5 +1,5 @@
 import React from 'react';
-import { ShoppingBag, PackageCheck, Zap, HelpCircle } from 'lucide-react';
+import { ShoppingBag, PackageCheck, Zap, HelpCircle, Shield } from 'lucide-react';
 import type { ShopInfo, TelegramWebAppUser } from '../types.js';
 import { useLanguage } from '../i18n.js';
 
@@ -7,18 +7,26 @@ interface NavbarProps {
   shop: ShopInfo | null;
   user?: TelegramWebAppUser;
   cartCount: number;
+  isAdmin?: boolean;
+  isReseller?: boolean;
+  resellerDiscount?: number;
   onOpenCart: () => void;
   onOpenOrders: () => void;
   onOpenSupport: () => void;
+  onOpenAdmin?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
   shop,
   user,
   cartCount,
+  isAdmin,
+  isReseller,
+  resellerDiscount = 20,
   onOpenCart,
   onOpenOrders,
-  onOpenSupport
+  onOpenSupport,
+  onOpenAdmin
 }) => {
   const { language, toggleLanguage, t } = useLanguage();
 
@@ -55,20 +63,38 @@ export const Navbar: React.FC<NavbarProps> = ({
                 {t.shop_badge}
               </span>
             </div>
-            <p className="text-[11px] text-gray-400 flex items-center gap-1 mt-0.5">
+            <div className="flex items-center gap-1.5 mt-0.5">
               {user ? (
-                <span className="text-gray-300 font-semibold truncate max-w-[120px]">
+                <span className="text-gray-300 font-semibold truncate max-w-[110px] text-[11px]">
                   @{user.username || user.first_name}
                 </span>
               ) : (
-                <span className="text-gray-400">{t.official_shop}</span>
+                <span className="text-gray-400 text-[11px]">{t.official_shop}</span>
               )}
-            </p>
+              {isReseller && (
+                <span className="px-1.5 py-0.5 rounded-md bg-gradient-to-r from-amber-500/25 to-amber-600/20 text-amber-300 font-black text-[9px] border border-amber-500/40 uppercase tracking-tight shadow-sm">
+                  💎 VIP -{resellerDiscount}%
+                </span>
+              )}
+            </div>
           </div>
         </div>
 
         {/* Right: Actions (Language Switcher, Support, Orders & Cart) */}
         <div className="flex items-center gap-1.5 sm:gap-2">
+          {/* Admin button if user is admin */}
+          {isAdmin && onOpenAdmin && (
+            <button
+              onClick={onOpenAdmin}
+              className="h-10 px-2 sm:px-2.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 active:scale-95 text-amber-300 transition border border-amber-500/40 flex items-center gap-1 cursor-pointer font-black text-[11px] shadow-sm shadow-amber-500/10"
+              title="Panel Administrateur"
+              aria-label="Panel Administrateur"
+            >
+              <Shield className="w-4 h-4 text-amber-400" />
+              <span className="hidden sm:inline">Admin</span>
+            </button>
+          )}
+
           {/* Language Switcher Button (FR / EN) */}
           <button
             onClick={toggleLanguage}

@@ -7,8 +7,22 @@ import {
   getStockCount,
   clearStock,
   setAdminChatId,
-  getAdminChatId
+  getAdminChatId,
+  getAllStock
 } from './starsStock.js';
+import {
+  getAllResellers,
+  getReseller,
+  isReseller,
+  addReseller,
+  removeReseller,
+  getDefaultDiscount
+} from './resellerStore.js';
+import {
+  saveStarsOrder,
+  getAllStarsOrders,
+  StarsOrder
+} from './starsOrdersStore.js';
 
 export const bot = new Bot(config.telegramBotToken);
 
@@ -26,7 +40,7 @@ export async function setupBot() {
     });
     console.log(' Telegram Menu Button configured to Mini App URL:', config.miniAppUrl);
   } catch (err: any) {
-    console.warn('⚠️ Could not set menu button (may require domain verification or valid https):', err.message);
+    console.warn('⚠️ Could not set menu button:', err.message);
   }
 }
 
@@ -78,13 +92,24 @@ function isAdmin(ctx: any): boolean {
   if (savedAdminId && String(ctx.from?.id) === String(savedAdminId)) {
     return true;
   }
+  if (process.env.ADMIN_TELEGRAM_ID && String(ctx.from?.id) === String(process.env.ADMIN_TELEGRAM_ID)) {
+    return true;
+  }
   return false;
 }
+
+// Storage for pending & completed Telegram Stars orders (in-memory cache)
+export const starsOrders = new Map<string, StarsOrder>();
 
 // /start command
 bot.command('start', async (ctx) => {
   const isFr = isFrenchUser(ctx);
   const userName = ctx.from?.first_name || (isFr ? 'Cher client' : 'Customer');
+  const userId = ctx.from?.id;
+
+  const userIsReseller = userId ? isReseller(userId) : false;
+  const resellerInfo = userId ? getReseller(userId) : undefined;
+  const userIsAdmin = isAdmin(ctx);
 
   const keyboard = new InlineKeyboard()
     .webApp(isFr ? '🚀 Ouvrir la Boutique' : '🚀 Open Shop', config.miniAppUrl)
@@ -94,23 +119,23 @@ bot.command('start', async (ctx) => {
     .text(isFr ? '📦 Mes Commandes' : '📦 My Orders', 'cmd_orders')
     .text(isFr ? '💬 Support' : '💬 Support', 'cmd_support');
 
-  const welcomeMessage = isFr
-    ? `
-⚡ *Bienvenue sur Tekaz Market, ${userName} !*
+  if (userIsAdmin) {
+    keyboard.row().text('👑 Panel Administrateur', 'admin_main');
+  }
 
-Accédez à notre catalogue complet de comptes, abonnements, licences et boosts avec livraison instantanée 24/7.
+  let welcomeMessage = isFr
+    ? `⚡ *Bienvenue sur Tekaz Market, ${userName} !*\n\nAccédez à notre catalogue complet de comptes, abonnements, licences et boosts avec livraison instantanée 24/7.`
+    : `⚡ *Welcome to Tekaz Market, ${userName}!*\n\nAccess our full catalog of accounts, subscriptions, software licenses and boosts with instant 24/7 delivery.`;
 
-🛒 *Une vraie application intégrée :*
-Cliquez sur le bouton ci-dessous pour ouvrir l'interface interactive directement dans Telegram (avec panier, filtres et paiement rapide).
-    `.trim()
-    : `
-⚡ *Welcome to Tekaz Market, ${userName}!*
+  if (userIsReseller) {
+    welcomeMessage += isFr
+      ? `\n\n💎 *Statut VIP Revendeur Actif :* Vous bénéficiez de *-${resellerInfo?.discountPercentage || 20}%* sur tous les articles de la boutique !`
+      : `\n\n💎 *Active Reseller VIP Status:* You get *-${resellerInfo?.discountPercentage || 20}%* on all products across the store!`;
+  }
 
-Access our full catalog of accounts, subscriptions, software licenses and boosts with instant 24/7 delivery.
-
-🛒 *Full Native Mini App:*
-Click the button below to launch the store directly inside Telegram (with cart, instant search and secure checkout).
-    `.trim();
+  welcomeMessage += isFr
+    ? `\n\n🛒 *Application intégrée :*\nCliquez ci-dessous pour lancer l'interface interactive.`
+    : `\n\n🛒 *Integrated Application:*\nClick below to launch the store interface.`;
 
   await ctx.reply(welcomeMessage, {
     parse_mode: 'Markdown',
@@ -118,8 +143,232 @@ Click the button below to launch the store directly inside Telegram (with cart, 
   });
 });
 
-// Admin Command: /stock or /admin
-bot.command(['stock', 'admin'], async (ctx) => {
+// Admin interactive menu builder
+function buildAdminKeyboard() {
+  return new InlineKeyboard()
+    .text('📦 Stocks Stars', 'admin_stock')
+    .text('📋 Commandes', 'admin_orders')
+    .row()
+    .text('💎 Revendeurs', 'admin_resellers')
+    .row()
+    .webApp('🖥️ Ouvrir Panel Web Complet', `${config.miniAppUrl}?tab=admin`);
+}
+
+// /admin command
+bot.command(['admin'], async (ctx) => {
+  if (!isAdmin(ctx)) {
+    return ctx.reply("⛔ Cette commande est réservée à l'administrateur @notthatid.");
+  }
+
+  const text = `👑 *Menu Administrateur Tekaz Market*
+
+Bienvenue dans votre centre de gestion. Choisissez une catégorie ou ouvrez directement le panel complet dans l'application :
+
+• 📦 *Stocks Stars :* Consulter ou alimenter le stock manuel
+• 📋 *Commandes :* Historique SellAuth & Telegram Stars
+• 💎 *Revendeurs :* Accorder ou révoquer les accès grossistes
+• 🖥️ *Panel Web :* Interface graphique complète avec statistiques
+`;
+
+  await ctx.reply(text, {
+    parse_mode: 'Markdown',
+    reply_markup: buildAdminKeyboard()
+  });
+});
+
+// Admin callbacks
+bot.callbackQuery('admin_main', async (ctx) => {
+  if (!isAdmin(ctx)) return ctx.answerCallbackQuery({ text: 'Accès refusé', show_alert: true });
+  await ctx.answerCallbackQuery();
+
+  const text = `👑 *Menu Administrateur Tekaz Market*
+
+Choisissez une action :
+`;
+  await ctx.editMessageText(text, {
+    parse_mode: 'Markdown',
+    reply_markup: buildAdminKeyboard()
+  });
+});
+
+bot.callbackQuery('admin_stock', async (ctx) => {
+  if (!isAdmin(ctx)) return ctx.answerCallbackQuery({ text: 'Accès refusé', show_alert: true });
+  await ctx.answerCallbackQuery();
+
+  try {
+    const { products } = await sellauthService.getProducts();
+    let text = `📦 *État du Stock Manuel Telegram Stars :*\n\n`;
+
+    for (const p of products) {
+      if (p.variants && p.variants.length > 1) {
+        text += '\n🏷️ *' + p.name + '* (ID: `' + p.id + '`):\n';
+        for (const v of p.variants) {
+          const count = getStockCount(p.id, v.id);
+          text += '  • ' + v.name + ' (Variant: `' + v.id + '`) : *' + count + ' en stock*\n';
+        }
+      } else {
+        const count = getStockCount(p.id);
+        text += '• *' + p.name + '* (ID: `' + p.id + '`) : *' + count + ' en stock*\n';
+      }
+    }
+
+    text += `\n➕ *Ajouter du stock :*
+\`/addstock <ID_PRODUIT>\`
+suivi de vos comptes (un par ligne)
+\`/clearstock <ID_PRODUIT>\` pour vider
+`;
+
+    const backKb = new InlineKeyboard()
+      .text('⬅️ Retour Menu', 'admin_main')
+      .webApp('🖥️ Gérer dans Panel Web', `${config.miniAppUrl}?tab=admin&sub=stock`);
+
+    await ctx.editMessageText(text, { parse_mode: 'Markdown', reply_markup: backKb });
+  } catch (err: any) {
+    await ctx.reply('❌ Erreur: ' + err.message);
+  }
+});
+
+bot.callbackQuery('admin_orders', async (ctx) => {
+  if (!isAdmin(ctx)) return ctx.answerCallbackQuery({ text: 'Accès refusé', show_alert: true });
+  await ctx.answerCallbackQuery();
+
+  try {
+    const starsOrdersList = getAllStarsOrders().slice(0, 5);
+    const { invoices } = await sellauthService.getRecentInvoices(1, 5);
+
+    let text = `📋 *Dernières Commandes :*\n\n`;
+
+    text += `🌟 *Telegram Stars (Dernières) :*\n`;
+    if (starsOrdersList.length === 0) {
+      text += `_Aucune commande Stars récente_\n`;
+    } else {
+      for (const o of starsOrdersList) {
+        text += `• #${o.orderId} - *${o.starsAmount} ⭐* (${o.status === 'paid' ? '✅ Payé' : '⏳ En attente'}) - ` + o.email + `\n`;
+      }
+    }
+
+    text += `\n💳 *SellAuth (Dernières) :*\n`;
+    if (invoices.length === 0) {
+      text += `_Aucune commande SellAuth récente_\n`;
+    } else {
+      for (const inv of invoices) {
+        text += `• #${inv.id} - *${inv.price} ${inv.currency}* (${inv.status}) - ` + inv.email + `\n`;
+      }
+    }
+
+    const backKb = new InlineKeyboard()
+      .text('⬅️ Retour Menu', 'admin_main')
+      .webApp('🖥️ Voir toutes dans Panel Web', `${config.miniAppUrl}?tab=admin&sub=orders`);
+
+    await ctx.editMessageText(text, { parse_mode: 'Markdown', reply_markup: backKb });
+  } catch (err: any) {
+    await ctx.reply('❌ Erreur: ' + err.message);
+  }
+});
+
+bot.callbackQuery('admin_resellers', async (ctx) => {
+  if (!isAdmin(ctx)) return ctx.answerCallbackQuery({ text: 'Accès refusé', show_alert: true });
+  await ctx.answerCallbackQuery();
+
+  const resellers = getAllResellers();
+  let text = `💎 *Gestion des Accès Revendeurs :*\n\n`;
+
+  if (resellers.length === 0) {
+    text += `_Aucun revendeur configuré pour le moment._\n`;
+  } else {
+    for (const r of resellers) {
+      text += `• ID: \`${r.telegramId}\` ${r.name ? `(${r.name})` : ''} - Remise: *-${r.discountPercentage}%*\n`;
+    }
+  }
+
+  text += `\n➕ *Ajouter un revendeur :*
+\`/addreseller <USER_ID_TELEGRAM> [POURCENTAGE] [NOM]\`
+
+Exemple :
+\`/addreseller 123456789 20 JeanRevendeur\`
+
+🗑️ *Supprimer un revendeur :*
+\`/delreseller <USER_ID_TELEGRAM>\`
+`;
+
+  const backKb = new InlineKeyboard()
+    .text('⬅️ Retour Menu', 'admin_main')
+    .webApp('🖥️ Gérer dans Panel Web', `${config.miniAppUrl}?tab=admin&sub=resellers`);
+
+  await ctx.editMessageText(text, { parse_mode: 'Markdown', reply_markup: backKb });
+});
+
+// Admin Command: /resellers
+bot.command('resellers', async (ctx) => {
+  if (!isAdmin(ctx)) {
+    return ctx.reply("⛔ Réservé à l'administrateur.");
+  }
+
+  const resellers = getAllResellers();
+  let text = `💎 *Liste des Revendeurs Agréés (${resellers.length}) :*\n\n`;
+
+  if (resellers.length === 0) {
+    text += `_Aucun revendeur enregistré._\n`;
+  } else {
+    for (const r of resellers) {
+      text += `• ID Telegram: \`${r.telegramId}\` ${r.name ? `(${r.name})` : ''} - *-${r.discountPercentage}%*\n`;
+    }
+  }
+
+  text += `\nUtilisez \`/addreseller <ID> [REMISE%] [NOM]\` pour ajouter un accès.`;
+  await ctx.reply(text, { parse_mode: 'Markdown' });
+});
+
+// Admin Command: /addreseller <id> [discount] [name]
+bot.command('addreseller', async (ctx) => {
+  if (!isAdmin(ctx)) {
+    return ctx.reply("⛔ Réservé à l'administrateur.");
+  }
+
+  const parts = (ctx.message?.text || '').trim().split(/\s+/);
+  const targetId = parts[1];
+  const discountStr = parts[2];
+  const name = parts.slice(3).join(' ') || undefined;
+
+  if (!targetId) {
+    return ctx.reply(`ℹ️ *Usage :* \`/addreseller <USER_ID_TELEGRAM> [REMISE%] [NOM]\`
+Exemple : \`/addreseller 123456789 20 MonRevendeur\``, { parse_mode: 'Markdown' });
+  }
+
+  const discount = discountStr && !isNaN(Number(discountStr)) ? Number(discountStr) : undefined;
+  const reseller = addReseller(targetId, name, discount);
+
+  await ctx.reply(`✅ *Accès Revendeur accordé !*
+🆔 ID Telegram : \`${reseller.telegramId}\`
+🏷️ Remise appliquée : *-${reseller.discountPercentage}%*
+${reseller.name ? `👤 Nom : ${reseller.name}` : ''}
+
+Ce client bénéficie désormais automatiquement des prix grossistes dans l'application !`, { parse_mode: 'Markdown' });
+});
+
+// Admin Command: /delreseller <id>
+bot.command('delreseller', async (ctx) => {
+  if (!isAdmin(ctx)) {
+    return ctx.reply("⛔ Réservé à l'administrateur.");
+  }
+
+  const parts = (ctx.message?.text || '').trim().split(/\s+/);
+  const targetId = parts[1];
+
+  if (!targetId) {
+    return ctx.reply(`Usage : \`/delreseller <USER_ID_TELEGRAM>\``, { parse_mode: 'Markdown' });
+  }
+
+  const removed = removeReseller(targetId);
+  if (removed) {
+    await ctx.reply(`🗑️ Accès revendeur révoqué pour l'ID \`${targetId}\`.`, { parse_mode: 'Markdown' });
+  } else {
+    await ctx.reply(`ℹ️ Cet ID n'était pas dans la liste des revendeurs.`, { parse_mode: 'Markdown' });
+  }
+});
+
+// Admin Command: /stock
+bot.command('stock', async (ctx) => {
   if (!isAdmin(ctx)) {
     return ctx.reply("⛔ Cette commande est réservée à l'administrateur @notthatid.");
   }
@@ -143,21 +392,14 @@ bot.command(['stock', 'admin'], async (ctx) => {
     }
 
     text += `\n➕ *Comment ajouter du stock :*
-Tapez la commande ci-dessous suivie de vos comptes ou clés (un par ligne) :
 \`/addstock <ID_PRODUIT>\`
-
-*Exemple pour ajouter 2 comptes :*
-\`/addstock 411470
-mail1@test.com:mdp1:2fakey
-mail2@test.com:mdp2:2fakey\`
-
-🗑️ *Pour vider le stock d'un produit :*
-\`/clearstock <ID_PRODUIT>\`
+suivi de vos comptes (un par ligne)
+\`/clearstock <ID_PRODUIT>\` pour vider
 `;
 
     await ctx.reply(text, { parse_mode: 'Markdown' });
   } catch (err: any) {
-    await ctx.reply(`❌ Erreur : ${err.message}`);
+    await ctx.reply('❌ Erreur : ' + err.message);
   }
 });
 
@@ -187,7 +429,7 @@ email2:password:2fa\``, { parse_mode: 'Markdown' });
   const variantId = parts[1] ? parseInt(parts[1], 10) : undefined;
 
   if (isNaN(productId)) {
-    return ctx.reply("❌ ID de produit invalide. Tapez `/stock` pour voir les IDs disponibles.", { parse_mode: 'Markdown' });
+    return ctx.reply('❌ ID de produit invalide. Tapez `/stock` pour voir les IDs disponibles.', { parse_mode: 'Markdown' });
   }
 
   try {
@@ -206,7 +448,7 @@ email2:password:2fa\``, { parse_mode: 'Markdown' });
 📦 Produit : *${prod.name}* ${variant?.name ? `(${variant.name})` : ''}
 🔢 Stock Stars disponible : *${result.total}*`, { parse_mode: 'Markdown' });
   } catch (err: any) {
-    await ctx.reply(`❌ Erreur lors de l'ajout : ${err.message}`);
+    await ctx.reply('❌ Erreur lors de l\'ajout : ' + err.message);
   }
 });
 
@@ -221,14 +463,14 @@ bot.command('clearstock', async (ctx) => {
   const variantId = parts[2] ? parseInt(parts[2], 10) : undefined;
 
   if (isNaN(productId)) {
-    return ctx.reply("Usage : `/clearstock <ID_PRODUIT>`", { parse_mode: 'Markdown' });
+    return ctx.reply('Usage : `/clearstock <ID_PRODUIT>`', { parse_mode: 'Markdown' });
   }
 
   const cleared = clearStock(productId, variantId);
   if (cleared) {
     await ctx.reply('🗑️ Stock vidé pour le produit `' + productId + '`.', { parse_mode: 'Markdown' });
   } else {
-    await ctx.reply(`ℹ️ Aucun stock enregistré pour ce produit.`, { parse_mode: 'Markdown' });
+    await ctx.reply('ℹ️ Aucun stock enregistré pour ce produit.', { parse_mode: 'Markdown' });
   }
 });
 
@@ -317,32 +559,7 @@ bot.command(['help', 'support'], async (ctx) => {
   await ctx.reply(helpMsg, { parse_mode: 'Markdown', reply_markup: keyboard });
 });
 
-// Storage for pending & completed Telegram Stars orders
-export interface StarsOrder {
-  orderId: string;
-  chatId: number | string;
-  email: string;
-  items: Array<{
-    productId: number;
-    variantId?: number;
-    name: string;
-    variantName?: string;
-    priceEur: number;
-    quantity: number;
-  }>;
-  eurTotal: number;
-  starsAmount: number;
-  status: 'pending' | 'paid';
-  delivered?: string;
-  instructions?: string;
-  createdAt: string;
-  paidAt?: string;
-  telegramPaymentChargeId?: string;
-}
-
-export const starsOrders = new Map<string, StarsOrder>();
-
-// Handle pre_checkout_query (Telegram requires an immediate answer within 10s to approve the Stars purchase)
+// Handle pre_checkout_query
 bot.on('pre_checkout_query', async (ctx) => {
   try {
     const payloadStr = ctx.preCheckoutQuery.invoice_payload;
@@ -375,6 +592,7 @@ bot.on(':successful_payment', async (ctx) => {
       order.status = 'paid';
       order.paidAt = new Date().toISOString();
       order.telegramPaymentChargeId = payment.telegram_payment_charge_id;
+      order.telegramUsername = ctx.from?.username || undefined;
 
       // Pop manual stock & retrieve SellAuth instructions
       const deliveredLines: string[] = [];
@@ -413,8 +631,14 @@ bot.on(':successful_payment', async (ctx) => {
         order.instructions = instructionsList.join('\n\n---\n\n');
       }
 
+      // Persist order update
+      saveStarsOrder(order);
+
       // Customer notification message
       let text = `🌟 *Paiement en Telegram Stars Confirmé !* (${payment.total_amount} ⭐)\n\n`;
+      if (order.isReseller) {
+        text += `💎 *Tarif Revendeur Appliqué* (Remise: -${order.discountApplied}%)\n\n`;
+      }
       text += `📦 *Articles commandés :*\n`;
       for (const item of order.items) {
         text += `• ${item.name} ${item.variantName ? `(${item.variantName})` : ''} x${item.quantity}\n`;
@@ -423,7 +647,7 @@ bot.on(':successful_payment', async (ctx) => {
       text += `🆔 *Commande :* \`${order.orderId}\`\n\n`;
 
       if (deliveredStr) {
-        text += `🔑 *Vos Identifiants & Accès :*\n\`\`\`\n${deliveredStr}\n\`\`\`\n\n`;
+        text += '🔑 *Vos Identifiants & Accès :*\n```\n' + deliveredStr + '\n```\n\n';
       }
 
       if (order.instructions) {
@@ -445,6 +669,9 @@ bot.on(':successful_payment', async (ctx) => {
       if (adminChatId) {
         const buyerTag = ctx.from?.username ? `@${ctx.from.username}` : (ctx.from?.first_name || 'Client');
         let adminAlert = `🌟 *NOUVELLE COMMANDE STARS !* (${payment.total_amount} ⭐)\n\n`;
+        if (order.isReseller) {
+          adminAlert += `💎 *COMMANDE REVENDEUR* (Remise: -${order.discountApplied}%)\n`;
+        }
         adminAlert += `👤 Client : ${buyerTag} (ID: \`${ctx.from?.id}\`)\n`;
         adminAlert += `📧 Email : \`${order.email}\`\n`;
         adminAlert += `🆔 Commande : \`${order.orderId}\`\n\n`;
@@ -487,7 +714,7 @@ export async function notifyUserOrderCompleted(chatId: number | string, invoice:
     }
 
     if (invoice.delivered) {
-      text += `🔑 *Vos livrables / Credentials :*\n\`\`\`\n${invoice.delivered}\n\`\`\`\n\n`;
+      text += '🔑 *Vos livrables / Credentials :*\n```\n' + invoice.delivered + '\n```\n\n';
     }
 
     text += `Merci pour votre achat sur Tekaz Market / Thank you for shopping with us! 🙏`;

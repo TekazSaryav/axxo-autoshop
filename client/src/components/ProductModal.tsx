@@ -5,6 +5,8 @@ import { useLanguage } from '../i18n.js';
 
 interface ProductModalProps {
   product: Product | null;
+  isReseller?: boolean;
+  resellerDiscount?: number;
   onClose: () => void;
   onAddToCart: (product: Product, variant: Variant, quantity: number) => void;
   onDirectBuy: (product: Product, variant: Variant, quantity: number) => void;
@@ -12,6 +14,8 @@ interface ProductModalProps {
 
 export const ProductModal: React.FC<ProductModalProps> = ({
   product,
+  isReseller,
+  resellerDiscount = 20,
   onClose,
   onAddToCart,
   onDirectBuy
@@ -39,7 +43,10 @@ export const ProductModal: React.FC<ProductModalProps> = ({
   const isSelectedVariantInStock =
     selectedVariant.stock === null || selectedVariant.stock === -1 || selectedVariant.stock > 0;
 
-  const currentPrice = parseFloat(selectedVariant.price || '0');
+  const rawCurrentPrice = parseFloat(selectedVariant.price || '0');
+  const currentPrice = isReseller
+    ? Math.round(rawCurrentPrice * (1 - resellerDiscount / 100) * 100) / 100
+    : rawCurrentPrice;
   const totalPrice = (currentPrice * quantity).toFixed(2);
 
   const imageUrl = product.images?.[0]?.url;

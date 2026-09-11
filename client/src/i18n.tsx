@@ -128,10 +128,34 @@ export const translations = {
     retry_conn: 'Réessayer la connexion',
     no_product_match: 'Aucun produit ne correspond à votre recherche',
     no_product_desc: 'Essayez un autre terme ou explorez toutes nos catégories.',
-    reset_filters: 'Réinitialiser les filtres',
-
     // Language switcher
-    switch_lang_title: 'Changer la langue (FR / EN)'
+    switch_lang_title: 'Changer la langue (FR / EN)',
+
+    // Reseller Mode
+    reseller_badge: 'VIP Revendeur',
+    reseller_banner: 'Mode Revendeur actif : remise de grossiste appliquée !',
+    reseller_price_tag: 'Tarif Grossiste',
+    reseller_discount_applied: 'Remise Revendeur',
+
+    // Admin Panel
+    admin_btn: 'Admin',
+    admin_panel_title: 'Panel d\'Administration',
+    admin_panel_sub: 'Gestion des stocks, commandes et revendeurs',
+    admin_tab_dashboard: 'Tableau de bord',
+    admin_tab_stock: 'Stocks Stars',
+    admin_tab_orders: 'Commandes',
+    admin_tab_resellers: 'Revendeurs',
+    admin_total_revenue: 'Chiffre d\'affaires',
+    admin_total_orders: 'Total Commandes',
+    admin_total_resellers: 'Revendeurs Actifs',
+    admin_total_stock: 'Stock Stars Disponible',
+    admin_add_stock: 'Alimenter le Stock',
+    admin_clear_stock: 'Vider le Stock',
+    admin_add_reseller: 'Ajouter un Revendeur',
+    admin_telegram_id_placeholder: 'ID Telegram (ex: 123456789)',
+    admin_reseller_name_placeholder: 'Nom / Pseudo du client',
+    admin_discount_placeholder: 'Remise % (ex: 20)',
+    admin_stock_lines_placeholder: 'Collez vos comptes ou clés ici (un par ligne)...'
   },
 
   en: {
@@ -261,7 +285,33 @@ export const translations = {
     reset_filters: 'Reset filters',
 
     // Language switcher
-    switch_lang_title: 'Switch language (FR / EN)'
+    switch_lang_title: 'Switch language (FR / EN)',
+
+    // Reseller Mode
+    reseller_badge: 'VIP Reseller',
+    reseller_banner: 'Reseller Mode active: wholesale discount applied!',
+    reseller_price_tag: 'Wholesale Price',
+    reseller_discount_applied: 'Reseller Discount',
+
+    // Admin Panel
+    admin_btn: 'Admin',
+    admin_panel_title: 'Admin Dashboard',
+    admin_panel_sub: 'Manage stock, orders and authorized resellers',
+    admin_tab_dashboard: 'Dashboard',
+    admin_tab_stock: 'Stars Stock',
+    admin_tab_orders: 'Orders',
+    admin_tab_resellers: 'Resellers',
+    admin_total_revenue: 'Total Revenue',
+    admin_total_orders: 'Total Orders',
+    admin_total_resellers: 'Active Resellers',
+    admin_total_stock: 'Available Stars Stock',
+    admin_add_stock: 'Add Stock',
+    admin_clear_stock: 'Clear Stock',
+    admin_add_reseller: 'Add Reseller',
+    admin_telegram_id_placeholder: 'Telegram User ID (e.g. 123456789)',
+    admin_reseller_name_placeholder: 'Customer name / note',
+    admin_discount_placeholder: 'Discount % (e.g. 20)',
+    admin_stock_lines_placeholder: 'Paste accounts or serial keys here (one per line)...'
   }
 };
 

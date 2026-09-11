@@ -76,6 +76,32 @@ export interface SavedOrder {
   instructions?: string | null;
 }
 
+export interface Reseller {
+  telegramId: string;
+  name?: string;
+  discountPercentage: number;
+  createdAt: string;
+  note?: string;
+}
+
+export interface UserStatus {
+  isAdmin: boolean;
+  isReseller: boolean;
+  discountPercentage: number;
+  reseller?: Reseller;
+}
+
+export interface AdminStats {
+  totalSellauthOrders: number;
+  totalStarsOrders: number;
+  paidStarsOrders: number;
+  totalStarsRevenue: number;
+  totalEurRevenueStars: number;
+  totalEurSellauth: number;
+  totalResellers: number;
+  totalStockSerials: number;
+}
+
 export interface TelegramWebAppUser {
   id: number;
   is_bot?: boolean;

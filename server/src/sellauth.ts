@@ -292,6 +292,39 @@ class SellAuthService {
     }
   }
 
+  async getRecentInvoices(page = 1, perPage = 25): Promise<{ invoices: any[]; total: number }> {
+    try {
+      const res = await fetch(`${config.sellauthBaseUrl}/shops/${config.sellauthShopId}/invoices?page=${page}&per_page=${perPage}`, {
+        headers: this.headers
+      });
+      if (!res.ok) {
+        throw new Error(`SellAuth invoices error: ${res.status}`);
+      }
+      const data = (await res.json()) as any;
+      const invoices = (data.data || []).map((inv: any) => ({
+        id: inv.id,
+        unique_id: inv.unique_id,
+        status: inv.status,
+        price: inv.price,
+        currency: inv.currency,
+        email: inv.email,
+        created_at: inv.created_at,
+        completed_at: inv.completed_at,
+        items: (inv.items || []).map((i: any) => ({
+          name: i.name || i.product?.name || i.custom_name,
+          variant: i.variant?.name,
+          quantity: i.quantity,
+          price: i.price
+        })),
+        delivered: inv.delivered
+      }));
+      return { invoices, total: data.total || invoices.length };
+    } catch (err: any) {
+      console.error('Error fetching recent invoices:', err.message);
+      return { invoices: [], total: 0 };
+    }
+  }
+
   async getFeedbacks(): Promise<{ feedbacks: Array<{ id: number; rating: number; message: string | null; date: string; product: string }>; total: number; averageRating: number }> {
     try {
       const res = await fetch(`${config.sellauthBaseUrl}/shops/${config.sellauthShopId}/feedbacks?per_page=25`, {

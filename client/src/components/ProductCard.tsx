@@ -5,12 +5,16 @@ import { useLanguage } from '../i18n.js';
 
 interface ProductCardProps {
   product: Product;
+  isReseller?: boolean;
+  resellerDiscount?: number;
   onOpenDetails: (product: Product) => void;
   onQuickAdd: (product: Product) => void;
 }
 
 export const ProductCard: React.FC<ProductCardProps> = ({
   product,
+  isReseller,
+  resellerDiscount = 20,
   onOpenDetails,
   onQuickAdd
 }) => {
@@ -22,6 +26,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({
     .map((v) => parseFloat(v.price))
     .filter((p) => !isNaN(p));
   const minPrice = prices.length > 0 ? Math.min(...prices) : (product.price ? parseFloat(product.price) : 0);
+  const discountedMinPrice = isReseller
+    ? Math.round(minPrice * (1 - resellerDiscount / 100) * 100) / 100
+    : minPrice;
 
   // Calculate stock status
   const hasVariants = product.variants && product.variants.length > 0;
@@ -118,12 +125,21 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         {/* Price & Action Row */}
         <div className="flex items-center justify-between pt-2 border-t border-white/5 mt-1.5">
           <div>
-            <span className="text-[9px] text-gray-400 block uppercase tracking-wider font-extrabold">
-              {product.variants && product.variants.length > 1 ? t.from_price : t.single_price}
+            <span className={`text-[9px] block uppercase tracking-wider font-extrabold ${isReseller ? 'text-amber-400' : 'text-gray-400'}`}>
+              {isReseller
+                ? `💎 ${t.reseller_price_tag} (-${resellerDiscount}%)`
+                : (product.variants && product.variants.length > 1 ? t.from_price : t.single_price)}
             </span>
-            <span className="font-extrabold text-base text-white tracking-tight font-mono">
-              {minPrice.toFixed(2)} {product.currency || '€'}
-            </span>
+            <div className="flex items-baseline gap-1.5 font-mono">
+              <span className={`font-extrabold text-base tracking-tight ${isReseller ? 'text-amber-300' : 'text-white'}`}>
+                {discountedMinPrice.toFixed(2)} {product.currency || '€'}
+              </span>
+              {isReseller && (
+                <span className="text-xs text-gray-500 line-through">
+                  {minPrice.toFixed(2)} €
+                </span>
+              )}
+            </div>
           </div>
 
           <div className="flex items-center gap-1.5">

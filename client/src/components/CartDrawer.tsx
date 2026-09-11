@@ -8,6 +8,8 @@ interface CartDrawerProps {
   onClose: () => void;
   cart: CartItem[];
   currency: string;
+  isReseller?: boolean;
+  resellerDiscount?: number;
   onUpdateQuantity: (index: number, quantity: number) => void;
   onRemoveItem: (index: number) => void;
   onCheckout: (email: string) => void;
@@ -22,6 +24,8 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   onClose,
   cart,
   currency,
+  isReseller,
+  resellerDiscount = 20,
   onUpdateQuantity,
   onRemoveItem,
   onCheckout,
@@ -44,9 +48,13 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
 
   if (!isOpen) return null;
 
-  const total = cart.reduce((sum, item) => {
+  const rawTotal = cart.reduce((sum, item) => {
     return sum + parseFloat(item.variant.price || '0') * item.quantity;
   }, 0);
+
+  const discountFactor = isReseller ? (1 - (resellerDiscount || 20) / 100) : 1;
+  const total = rawTotal * discountFactor;
+  const savings = rawTotal - total;
 
   // Compute stars total (65 stars per 1 EUR with 30% Apple/Google fee coverage)
   const starsTotal = Math.max(10, Math.round(total * 65));
@@ -229,9 +237,27 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
         {/* Footer Actions: Dual Payment Gateways (Crypto/Card & Telegram Stars) */}
         {cart.length > 0 && (
           <div className="p-4 sm:p-5 border-t border-white/10 bg-gray-950 space-y-3 flex-shrink-0">
+            {/* Reseller Wholesale Summary Banner */}
+            {isReseller && (
+              <div className="p-2.5 rounded-xl bg-gradient-to-r from-amber-500/10 via-amber-500/20 to-yellow-500/10 border border-amber-400/30 flex items-center justify-between text-xs">
+                <div className="flex items-center gap-1.5 font-bold text-amber-300">
+                  <span>💎</span>
+                  <span>{t.reseller_discount_applied} (-{resellerDiscount}%)</span>
+                </div>
+                <span className="font-mono font-black text-amber-400">
+                  -{savings.toFixed(2)} {currency}
+                </span>
+              </div>
+            )}
+
             <div className="flex items-center justify-between text-sm">
               <span className="text-gray-400 font-medium">{t.total_cart}</span>
               <div className="text-right">
+                {isReseller && (
+                  <span className="text-xs line-through text-gray-500 font-mono block">
+                    {rawTotal.toFixed(2)} {currency}
+                  </span>
+                )}
                 <span className="text-2xl font-black text-white font-mono tracking-tight">
                   {total.toFixed(2)} {currency}
                 </span>

@@ -1,7 +1,14 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useTelegram } from './hooks/useTelegram.js';
-import { fetchShopInfo, fetchProducts, createCheckout, createStarsCheckout, checkStarsPayment } from './services/api.js';
-import type { Product, Variant, Category, CartItem, ShopInfo, SavedOrder } from './types.js';
+import {
+  fetchShopInfo,
+  fetchProducts,
+  createCheckout,
+  createStarsCheckout,
+  checkStarsPayment,
+  fetchUserStatus
+} from './services/api.js';
+import type { Product, Variant, Category, CartItem, ShopInfo, SavedOrder, UserStatus } from './types.js';
 
 import { Navbar } from './components/Navbar.js';
 import { CategoryTabs } from './components/CategoryTabs.js';
@@ -12,6 +19,7 @@ import { CartDrawer } from './components/CartDrawer.js';
 import { CheckoutModal } from './components/CheckoutModal.js';
 import { OrdersTab } from './components/OrdersTab.js';
 import { SupportModal } from './components/SupportModal.js';
+import { AdminModal } from './components/AdminModal.js';
 
 import { LanguageProvider, useLanguage } from './i18n.js';
 import { Sparkles, ShieldCheck, Zap, RefreshCw, AlertCircle, ArrowRight } from 'lucide-react';
@@ -19,6 +27,9 @@ import { Sparkles, ShieldCheck, Zap, RefreshCw, AlertCircle, ArrowRight } from '
 function ShopContent() {
   const { user, haptic, openLink, openInvoice } = useTelegram();
   const { t } = useLanguage();
+
+  // User status (Admin / Reseller)
+  const [userStatus, setUserStatus] = useState<UserStatus | null>(null);
 
   // Shop & catalog state
   const [shop, setShop] = useState<ShopInfo | null>(null);
@@ -36,11 +47,12 @@ function ShopContent() {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isOrdersOpen, setIsOrdersOpen] = useState(false);
   const [isSupportOpen, setIsSupportOpen] = useState(false);
+  const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [isCheckingOutStars, setIsCheckingOutStars] = useState(false);
   const [activeCheckout, setActiveCheckout] = useState<{ invoiceId: number; invoiceUrl: string } | null>(null);
 
-  // Check URL tab parameter on mount
+  // Check URL tab parameter and fetch user status on mount
   useEffect(() => {
     try {
       const params = new URLSearchParams(window.location.search);
@@ -48,9 +60,17 @@ function ShopContent() {
         setIsSupportOpen(true);
       } else if (params.get('tab') === 'orders') {
         setIsOrdersOpen(true);
+      } else if (params.get('tab') === 'admin') {
+        setIsAdminOpen(true);
       }
     } catch {}
-  }, []);
+
+    fetchUserStatus(user?.id, user?.username)
+      .then((status) => {
+        setUserStatus(status);
+      })
+      .catch((err) => console.warn('Could not load user status:', err));
+  }, [user]);
 
   // Cart state persisted
   const [cart, setCart] = useState<CartItem[]>(() => {
@@ -297,7 +317,9 @@ function ShopContent() {
   }, [products, selectedCategory, searchQuery]);
 
   const totalCartItems = cart.reduce((sum, item) => sum + item.quantity, 0);
-  const cartTotalPrice = cart.reduce((sum, item) => sum + parseFloat(item.variant.price || '0') * item.quantity, 0);
+  const isReseller = Boolean(userStatus?.isReseller);
+  const resellerDiscount = userStatus?.discountPercentage || 20;
+  const isAdmin = Boolean(userStatus?.isAdmin);
 
   return (
     <div className="min-h-screen bg-[#080c15] flex flex-col justify-between pb-24">
@@ -306,6 +328,9 @@ function ShopContent() {
         shop={shop}
         user={user}
         cartCount={totalCartItems}
+        isAdmin={isAdmin}
+        isReseller={isReseller}
+        resellerDiscount={resellerDiscount}
         onOpenCart={() => {
           haptic.selection();
           setIsCartOpen(true);
@@ -317,6 +342,10 @@ function ShopContent() {
         onOpenSupport={() => {
           haptic.selection();
           setIsSupportOpen(true);
+        }}
+        onOpenAdmin={() => {
+          haptic.selection();
+          setIsAdminOpen(true);
         }}
       />
 
@@ -441,6 +470,8 @@ function ShopContent() {
                 <ProductCard
                   key={product.id}
                   product={product}
+                  isReseller={isReseller}
+                  resellerDiscount={resellerDiscount}
                   onOpenDetails={(p) => {
                     haptic.selection();
                     setSelectedProduct(p);
@@ -475,7 +506,7 @@ function ShopContent() {
 
             <div className="flex items-center gap-2">
               <span className="text-base font-black font-mono">
-                {cartTotalPrice.toFixed(2)} {shop?.currency || '€'}
+                {(cartTotalPrice * (isReseller ? (1 - resellerDiscount / 100) : 1)).toFixed(2)} {shop?.currency || '€'}
               </span>
               <ArrowRight className="w-4 h-4" />
             </div>
@@ -486,6 +517,8 @@ function ShopContent() {
       {/* Product Detail Modal */}
       <ProductModal
         product={selectedProduct}
+        isReseller={isReseller}
+        resellerDiscount={resellerDiscount}
         onClose={() => setSelectedProduct(null)}
         onAddToCart={handleAddToCart}
         onDirectBuy={handleDirectBuy}
@@ -497,6 +530,8 @@ function ShopContent() {
         onClose={() => setIsCartOpen(false)}
         cart={cart}
         currency={shop?.currency || 'EUR'}
+        isReseller={isReseller}
+        resellerDiscount={resellerDiscount}
         onUpdateQuantity={handleUpdateQuantity}
         onRemoveItem={handleRemoveItem}
         onCheckout={handleCheckout}
@@ -525,6 +560,15 @@ function ShopContent() {
         isOpen={isSupportOpen}
         onClose={() => setIsSupportOpen(false)}
         onOpenLink={(url) => openLink(url)}
+      />
+
+      {/* Admin Dashboard Modal */}
+      <AdminModal
+        isOpen={isAdminOpen}
+        onClose={() => setIsAdminOpen(false)}
+        adminTelegramId={user?.id}
+        adminUsername={user?.username}
+        products={products}
       />
 
       {/* Active Checkout & Invoice Modal */}
