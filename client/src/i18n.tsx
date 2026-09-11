@@ -11,6 +11,7 @@ export const translations = {
     support_reviews: 'Support & Avis',
     my_orders: 'Mes Commandes',
     cart: 'Panier',
+    menu_btn: 'Menu',
 
     // Hero banner
     hero_pill: 'Autoshop Automatisé • Délivrance 24/7',
@@ -165,6 +166,7 @@ export const translations = {
     support_reviews: 'Support & Reviews',
     my_orders: 'My Orders',
     cart: 'Cart',
+    menu_btn: 'Menu',
 
     // Hero banner
     hero_pill: 'Automated Autoshop • Instant Delivery 24/7',
