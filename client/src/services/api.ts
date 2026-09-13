@@ -1,24 +1,96 @@
 import type { Product, Category, ShopInfo, UserStatus, AdminStats, Reseller } from '../types.js';
 
-export async function fetchShopInfo(): Promise<ShopInfo> {
-  const res = await fetch('/api/shop');
-  const data = await res.json();
-  if (!res.ok || !data.success) {
-    throw new Error(data.error || 'Failed to fetch shop info');
+// Helper with timeout
+async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs = 12000): Promise<Response> {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(url, { ...options, signal: controller.signal });
+    clearTimeout(id);
+    return response;
+  } catch (err) {
+    clearTimeout(id);
+    throw err;
   }
-  return data.shop;
+}
+
+export async function fetchShopInfo(): Promise<ShopInfo> {
+  try {
+    const res = await fetchWithTimeout('/api/shop', {}, 8000);
+    const data = await res.json();
+    if (res.ok && data.success && data.shop) {
+      try { localStorage.setItem('tekaz_cached_shop', JSON.stringify(data.shop)); } catch {}
+      return data.shop;
+    }
+  } catch (e) {
+    console.warn('Shop info fetch failed, trying cache:', e);
+  }
+
+  // Fallback to cache
+  try {
+    const cached = localStorage.getItem('tekaz_cached_shop');
+    if (cached) return JSON.parse(cached);
+  } catch {}
+
+  return {
+    id: 147681,
+    name: 'Tekaz Market',
+    domain: 'tekaz.xyz',
+    currency: 'EUR',
+    logo_url: null,
+    banner_url: null,
+    description: 'Boutique automatisée 24/7'
+  };
 }
 
 export async function fetchProducts(refresh = false): Promise<{ products: Product[]; categories: Category[] }> {
-  const res = await fetch(`/api/products${refresh ? '?refresh=true' : ''}`);
-  const data = await res.json();
-  if (!res.ok || !data.success) {
-    throw new Error(data.error || 'Failed to fetch products');
+  let lastError: any = null;
+
+  // Try up to 2 attempts
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      const url = `/api/products${refresh ? '?refresh=true' : ''}`;
+      const res = await fetchWithTimeout(url, {}, 12000);
+      const data = await res.json();
+      if (res.ok && data.success && data.products) {
+        // Cache products and categories in localStorage for offline/cold-start instant recovery
+        try {
+          localStorage.setItem('tekaz_cached_products', JSON.stringify({
+            products: data.products,
+            categories: data.categories,
+            time: Date.now()
+          }));
+        } catch {}
+        return {
+          products: data.products,
+          categories: data.categories || []
+        };
+      }
+      throw new Error(data.error || `Erreur serveur HTTP ${res.status}`);
+    } catch (err: any) {
+      lastError = err;
+      if (attempt < 2) {
+        await new Promise((r) => setTimeout(r, 1200));
+      }
+    }
   }
-  return {
-    products: data.products,
-    categories: data.categories
-  };
+
+  // If network failed (Render cold start or mobile network hiccup), check localStorage cache
+  try {
+    const cachedStr = localStorage.getItem('tekaz_cached_products');
+    if (cachedStr) {
+      const cached = JSON.parse(cachedStr);
+      if (cached.products && cached.products.length > 0) {
+        console.warn('Serving products from local cache following network error:', lastError);
+        return {
+          products: cached.products,
+          categories: cached.categories || []
+        };
+      }
+    }
+  } catch {}
+
+  throw new Error(lastError?.message || 'Impossible de charger le catalogue. Veuillez vérifier votre connexion.');
 }
 
 export async function createCheckout(

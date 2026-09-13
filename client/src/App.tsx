@@ -31,11 +31,42 @@ function ShopContent() {
   // User status (Admin / Reseller)
   const [userStatus, setUserStatus] = useState<UserStatus | null>(null);
 
-  // Shop & catalog state
-  const [shop, setShop] = useState<ShopInfo | null>(null);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  // Shop & catalog state (instantly restored from cache if available)
+  const [shop, setShop] = useState<ShopInfo | null>(() => {
+    try {
+      const s = localStorage.getItem('tekaz_cached_shop');
+      return s ? JSON.parse(s) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  const [products, setProducts] = useState<Product[]>(() => {
+    try {
+      const p = localStorage.getItem('tekaz_cached_products');
+      return p ? (JSON.parse(p).products || []) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const [categories, setCategories] = useState<Category[]>(() => {
+    try {
+      const p = localStorage.getItem('tekaz_cached_products');
+      return p ? (JSON.parse(p).categories || []) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const [isLoading, setIsLoading] = useState(() => {
+    try {
+      const p = localStorage.getItem('tekaz_cached_products');
+      return !p;
+    } catch {
+      return true;
+    }
+  });
   const [error, setError] = useState<string | null>(null);
 
   // Filter state
@@ -102,7 +133,13 @@ function ShopContent() {
 
   // Fetch shop and products data
   const loadData = useCallback(async (refresh = false) => {
-    setIsLoading(true);
+    // Only show full loading spinner/skeleton if no products are already visible
+    setProducts((current) => {
+      if (!current || current.length === 0) {
+        setIsLoading(true);
+      }
+      return current;
+    });
     setError(null);
     try {
       const [shopData, productsData] = await Promise.all([
@@ -114,7 +151,13 @@ function ShopContent() {
       setCategories(productsData.categories);
     } catch (err: any) {
       console.error('Failed to load shop catalog:', err);
-      setError(err.message || 'Impossible de charger les articles de la boutique');
+      // Only display hard blocking error if we don't even have cached products
+      setProducts((current) => {
+        if (!current || current.length === 0) {
+          setError(err.message || 'Impossible de charger les articles de la boutique');
+        }
+        return current;
+      });
     } finally {
       setIsLoading(false);
     }
