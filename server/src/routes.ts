@@ -22,6 +22,7 @@ import {
   getAllStarsOrders,
   StarsOrder
 } from './starsOrdersStore.js';
+import { recordTelegramUser } from './userStore.js';
 
 export const apiRouter = Router();
 
@@ -81,6 +82,10 @@ apiRouter.get('/user/status', async (req: Request, res: Response) => {
     const telegramId = req.query.telegram_id as string;
     const username = req.query.username as string;
 
+    if (telegramId) {
+      recordTelegramUser(telegramId, username);
+    }
+
     const isAdmin = checkIsAdmin(telegramId, username);
     const reseller = telegramId ? getReseller(telegramId) : undefined;
     const isResellerUser = !!reseller;
@@ -113,9 +118,12 @@ apiRouter.post('/checkout', async (req: Request, res: Response) => {
 
     const checkoutResult = await sellauthService.createCheckout(cart, email);
 
-    // If customer provided their telegram chat id, remember it for webhook delivery
-    if (telegram_chat_id && checkoutResult.invoice_id) {
-      invoiceToTelegramMap.set(checkoutResult.invoice_id, telegram_chat_id);
+    // If customer provided their telegram chat id, remember it for webhook delivery and record user
+    if (telegram_chat_id) {
+      recordTelegramUser(telegram_chat_id);
+      if (checkoutResult.invoice_id) {
+        invoiceToTelegramMap.set(checkoutResult.invoice_id, telegram_chat_id);
+      }
     }
 
     res.json({
@@ -148,6 +156,10 @@ apiRouter.post('/checkout/stars', async (req: Request, res: Response) => {
     // Check reseller status
     const reseller = telegram_chat_id ? getReseller(telegram_chat_id) : undefined;
     const resellerDiscount = reseller ? reseller.discountPercentage : 0;
+
+    if (telegram_chat_id) {
+      recordTelegramUser(telegram_chat_id);
+    }
 
     for (const item of cart) {
       const prod = products.find(p => p.id === item.productId);

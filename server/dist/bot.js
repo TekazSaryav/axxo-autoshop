@@ -4,6 +4,7 @@ import { sellauthService } from './sellauth.js';
 import { addStock, popStock, clearStock, setAdminChatId, getAdminChatId, getAllStock } from './starsStock.js';
 import { getAllResellers, getReseller, isReseller, addReseller, removeReseller } from './resellerStore.js';
 import { saveStarsOrder, getAllStarsOrders } from './starsOrdersStore.js';
+import { recordTelegramUser, getAllTelegramUsers, getTelegramUsersCount } from './userStore.js';
 export const bot = new Bot(config.telegramBotToken);
 // Configure bot menu button on startup
 export async function setupBot() {
@@ -57,8 +58,11 @@ function escapeMd(text) {
         return '';
     return String(text).replace(/([_*`\[\]()])/g, '\\$1');
 }
-// Auto-detect and record admin chatId when @notthatid interacts with bot
+// Auto-detect and record admin chatId, and save all interacting users
 bot.use(async (ctx, next) => {
+    if (ctx.from?.id) {
+        recordTelegramUser(ctx.from.id, ctx.from.username, ctx.from.first_name, ctx.from.last_name, ctx.from.language_code);
+    }
     const username = ctx.from?.username?.toLowerCase();
     if (username === 'notthatid' && ctx.chat?.id) {
         setAdminChatId(ctx.chat.id);
@@ -124,6 +128,7 @@ function buildAdminKeyboard() {
         .text('📋 Commandes', 'admin_orders')
         .row()
         .text('💎 Revendeurs', 'admin_resellers')
+        .text('📢 Diffusion / Users', 'admin_broadcast_info')
         .row()
         .webApp('🖥️ Ouvrir Panel Web Complet', `${config.miniAppUrl}?tab=admin`);
 }
@@ -132,6 +137,7 @@ bot.command(['admin'], async (ctx) => {
     if (!isAdmin(ctx)) {
         return ctx.reply("⛔ Cette commande est réservée à l'administrateur @notthatid.");
     }
+    const userCount = getTelegramUsersCount();
     const text = `👑 *Menu Administrateur Tekaz Market*
 
 Bienvenue dans votre centre de gestion. Choisissez une catégorie ou ouvrez directement le panel complet dans l'application :
@@ -139,6 +145,8 @@ Bienvenue dans votre centre de gestion. Choisissez une catégorie ou ouvrez dire
 • 📦 *Stocks Stars :* Consulter ou alimenter le stock manuel
 • 📋 *Commandes :* Historique SellAuth & Telegram Stars
 • 💎 *Revendeurs :* Accorder ou révoquer les accès grossistes
+• 📢 *Diffusions :* \`/broadcast <texte>\` (${userCount} utilisateurs enregistrés)
+• 💬 *Message direct :* \`/say <chat_id> <texte>\`
 • 🖥️ *Panel Web :* Interface graphique complète avec statistiques
 `;
     await ctx.reply(text, {
@@ -270,6 +278,32 @@ Exemple :
     const backKb = new InlineKeyboard()
         .text('⬅️ Retour Menu', 'admin_main')
         .webApp('🖥️ Gérer dans Panel Web', `${config.miniAppUrl}?tab=admin&sub=resellers`);
+    await ctx.editMessageText(text, { parse_mode: 'Markdown', reply_markup: backKb });
+});
+bot.callbackQuery('admin_broadcast_info', async (ctx) => {
+    if (!isAdmin(ctx))
+        return ctx.answerCallbackQuery({ text: 'Accès refusé', show_alert: true });
+    await ctx.answerCallbackQuery();
+    const totalUsers = getTelegramUsersCount();
+    const text = `📢 *Système de Diffusion & Annonces*
+
+👥 Utilisateurs enregistrés : *${totalUsers}*
+
+Pour diffuser une mise à jour, un patch note ou une promo à TOUS vos clients avec l'identité du bot :
+
+\`\`\`
+/broadcast Votre message ici...
+\`\`\`
+
+💬 Pour envoyer un message privé à un utilisateur spécifique :
+\`\`\`
+/say <USER_ID> Votre message ici...
+\`\`\`
+
+_Chaque message de diffusion inclura automatiquement le bouton "🛍️ Ouvrir la Boutique" pour inciter vos clients à visiter le shop !_
+`;
+    const backKb = new InlineKeyboard()
+        .text('⬅️ Retour Menu', 'admin_main');
     await ctx.editMessageText(text, { parse_mode: 'Markdown', reply_markup: backKb });
 });
 // Admin Command: /resellers
@@ -463,6 +497,68 @@ bot.command('clearstock', async (ctx) => {
     }
     else {
         await ctx.reply('ℹ️ Aucun stock enregistré pour ce produit.', { parse_mode: 'Markdown' });
+    }
+});
+// Admin Command: /broadcast <message> (Diffusion à tous les utilisateurs)
+bot.command('broadcast', async (ctx) => {
+    if (!isAdmin(ctx)) {
+        return ctx.reply("⛔ Cette commande est réservée à l'administrateur @notthatid.");
+    }
+    const messageText = ctx.message?.text || '';
+    const broadcastBody = messageText.replace(/^\/broadcast\s*/i, '').trim();
+    if (!broadcastBody) {
+        return ctx.reply(`📢 *Usage :* \`/broadcast <Votre message>\`\n\n_Le message sera envoyé à tous les utilisateurs enregistrés avec le bouton d'accès à la boutique._`, { parse_mode: 'Markdown' });
+    }
+    const allUsers = getAllTelegramUsers();
+    if (allUsers.length === 0) {
+        return ctx.reply('ℹ️ Aucun utilisateur enregistré pour le moment.');
+    }
+    await ctx.reply(`⏳ Début de la diffusion vers *${allUsers.length}* utilisateurs...`, { parse_mode: 'Markdown' });
+    const shopKeyboard = new InlineKeyboard()
+        .webApp('🛍️ Ouvrir la Boutique', config.miniAppUrl)
+        .url('📢 Canal Officiel', 'https://t.me/TekazMarket');
+    const formattedMessage = `📢 *ANNONCE OFFICIELLE TEKAZ MARKET*\n\n${broadcastBody}`;
+    let successCount = 0;
+    let failCount = 0;
+    for (const user of allUsers) {
+        try {
+            await bot.api.sendMessage(user.id, formattedMessage, {
+                parse_mode: 'Markdown',
+                reply_markup: shopKeyboard
+            });
+            successCount++;
+        }
+        catch (err) {
+            failCount++;
+        }
+        // Anti flood protection (35ms delay between sends)
+        await new Promise((resolve) => setTimeout(resolve, 35));
+    }
+    await ctx.reply(`✅ *Diffusion terminée !*\n\n• Envoyés avec succès : *${successCount}*\n• Échecs (bots bloqués/inaccessibles) : *${failCount}*\n• Total ciblés : *${allUsers.length}*`, { parse_mode: 'Markdown' });
+});
+// Admin Command: /say <chat_id> <message> (Envoyer un message individuel avec l'identité du bot)
+bot.command('say', async (ctx) => {
+    if (!isAdmin(ctx)) {
+        return ctx.reply("⛔ Cette commande est réservée à l'administrateur @notthatid.");
+    }
+    const messageText = ctx.message?.text || '';
+    const parts = messageText.replace(/^\/say\s*/i, '').trim().split(/\s+/);
+    const targetChatId = parts[0];
+    const directMessage = parts.slice(1).join(' ').trim();
+    if (!targetChatId || !directMessage) {
+        return ctx.reply(`💬 *Usage :* \`/say <USER_ID> <Votre message>\`\n\n*Exemple :*\n\`/say 123456789 Bonjour, votre compte est réactivé !\``, { parse_mode: 'Markdown' });
+    }
+    try {
+        const shopKeyboard = new InlineKeyboard()
+            .webApp('🛍️ Ouvrir la Boutique', config.miniAppUrl);
+        await bot.api.sendMessage(targetChatId, `💬 *Message de l'administrateur :*\n\n${directMessage}`, {
+            parse_mode: 'Markdown',
+            reply_markup: shopKeyboard
+        });
+        await ctx.reply(`✅ Message envoyé avec succès à l'utilisateur \`${targetChatId}\`.`, { parse_mode: 'Markdown' });
+    }
+    catch (err) {
+        await ctx.reply(`❌ Erreur lors de l'envoi : ${err.message}`);
     }
 });
 // Callback query handlers

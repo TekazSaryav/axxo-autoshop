@@ -22,6 +22,7 @@ import { SupportModal } from './components/SupportModal.js';
 import { AdminModal } from './components/AdminModal.js';
 
 import { LanguageProvider, useLanguage } from './i18n.js';
+import { ErrorBoundary } from './components/ErrorBoundary.js';
 import { Sparkles, ShieldCheck, Zap, RefreshCw, AlertCircle, ArrowRight } from 'lucide-react';
 
 function ShopContent() {
@@ -91,14 +92,18 @@ function ShopContent() {
         setIsSupportOpen(true);
       } else if (params.get('tab') === 'orders') {
         setIsOrdersOpen(true);
-      } else if (params.get('tab') === 'admin') {
-        setIsAdminOpen(true);
       }
     } catch {}
 
     fetchUserStatus(user?.id, user?.username)
       .then((status) => {
         setUserStatus(status);
+        try {
+          const params = new URLSearchParams(window.location.search);
+          if (params.get('tab') === 'admin' && status.isAdmin) {
+            setIsAdminOpen(true);
+          }
+        } catch {}
       })
       .catch((err) => console.warn('Could not load user status:', err));
   }, [user]);
@@ -632,9 +637,11 @@ export function App() {
   const { user } = useTelegram();
 
   return (
-    <LanguageProvider telegramUser={user}>
-      <ShopContent />
-    </LanguageProvider>
+    <ErrorBoundary>
+      <LanguageProvider telegramUser={user}>
+        <ShopContent />
+      </LanguageProvider>
+    </ErrorBoundary>
   );
 }
 

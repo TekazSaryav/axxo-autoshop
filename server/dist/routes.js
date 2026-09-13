@@ -4,6 +4,7 @@ import { notifyUserOrderCompleted, bot, starsOrders } from './bot.js';
 import { getAdminChatId, getAllStock, addStock, clearStock } from './starsStock.js';
 import { getAllResellers, getReseller, addReseller, removeReseller, getDefaultDiscount } from './resellerStore.js';
 import { saveStarsOrder, getStarsOrder, getAllStarsOrders } from './starsOrdersStore.js';
+import { recordTelegramUser } from './userStore.js';
 export const apiRouter = Router();
 // Store mapping of invoice_id -> telegram_chat_id in memory for instant notification
 const invoiceToTelegramMap = new Map();
@@ -59,6 +60,9 @@ apiRouter.get('/user/status', async (req, res) => {
     try {
         const telegramId = req.query.telegram_id;
         const username = req.query.username;
+        if (telegramId) {
+            recordTelegramUser(telegramId, username);
+        }
         const isAdmin = checkIsAdmin(telegramId, username);
         const reseller = telegramId ? getReseller(telegramId) : undefined;
         const isResellerUser = !!reseller;
@@ -86,9 +90,12 @@ apiRouter.post('/checkout', async (req, res) => {
             return res.status(400).json({ success: false, error: 'Une adresse email valide est requise' });
         }
         const checkoutResult = await sellauthService.createCheckout(cart, email);
-        // If customer provided their telegram chat id, remember it for webhook delivery
-        if (telegram_chat_id && checkoutResult.invoice_id) {
-            invoiceToTelegramMap.set(checkoutResult.invoice_id, telegram_chat_id);
+        // If customer provided their telegram chat id, remember it for webhook delivery and record user
+        if (telegram_chat_id) {
+            recordTelegramUser(telegram_chat_id);
+            if (checkoutResult.invoice_id) {
+                invoiceToTelegramMap.set(checkoutResult.invoice_id, telegram_chat_id);
+            }
         }
         res.json({
             ...checkoutResult
@@ -116,6 +123,9 @@ apiRouter.post('/checkout/stars', async (req, res) => {
         // Check reseller status
         const reseller = telegram_chat_id ? getReseller(telegram_chat_id) : undefined;
         const resellerDiscount = reseller ? reseller.discountPercentage : 0;
+        if (telegram_chat_id) {
+            recordTelegramUser(telegram_chat_id);
+        }
         for (const item of cart) {
             const prod = products.find(p => p.id === item.productId);
             if (!prod) {
