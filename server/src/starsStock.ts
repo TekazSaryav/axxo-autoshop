@@ -14,13 +14,19 @@ export interface StarsStockData {
   stock: Record<string, StockEntry>;
 }
 
-const dataDir = path.resolve(process.cwd(), 'data');
-const stockFilePath = path.resolve(dataDir, 'stars_stock.json');
+import { resolveDataDir } from './dataPath.js';
+
+function getStockFilePath(): string {
+  const dir = resolveDataDir();
+  return path.resolve(dir, 'stars_stock.json');
+}
 
 function ensureDataFile(): void {
   try {
-    if (!fs.existsSync(dataDir)) {
-      fs.mkdirSync(dataDir, { recursive: true });
+    const dir = resolveDataDir();
+    const stockFilePath = getStockFilePath();
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
     }
     if (!fs.existsSync(stockFilePath)) {
       const initial: StarsStockData = {
@@ -36,6 +42,7 @@ function ensureDataFile(): void {
 function loadStockData(): StarsStockData {
   ensureDataFile();
   try {
+    const stockFilePath = getStockFilePath();
     const raw = fs.readFileSync(stockFilePath, 'utf8');
     return JSON.parse(raw);
   } catch (err) {
@@ -47,6 +54,7 @@ function loadStockData(): StarsStockData {
 function saveStockData(data: StarsStockData): void {
   ensureDataFile();
   try {
+    const stockFilePath = getStockFilePath();
     fs.writeFileSync(stockFilePath, JSON.stringify(data, null, 2), 'utf8');
   } catch (err) {
     console.error('Error saving stock data:', err);

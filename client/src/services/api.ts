@@ -1,4 +1,4 @@
-import type { Product, Category, ShopInfo, UserStatus, AdminStats, Reseller } from '../types.js';
+import type { Product, Category, ShopInfo, UserStatus, AdminStats, Reseller, TelegramUserRecord } from '../types.js';
 
 // Helper with timeout
 async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs = 12000): Promise<Response> {
@@ -171,10 +171,19 @@ export async function fetchFeedbacks(): Promise<{
   return data;
 }
 
-export async function fetchUserStatus(telegramId?: number, username?: string): Promise<UserStatus> {
+export async function fetchUserStatus(
+  telegramId?: number,
+  username?: string,
+  firstName?: string,
+  lastName?: string,
+  languageCode?: string
+): Promise<UserStatus> {
   const params = new URLSearchParams();
   if (telegramId) params.append('telegram_id', String(telegramId));
   if (username) params.append('username', username);
+  if (firstName) params.append('first_name', firstName);
+  if (lastName) params.append('last_name', lastName);
+  if (languageCode) params.append('language_code', languageCode);
 
   const res = await fetch(`/api/user/status?${params.toString()}`);
   const data = await res.json();
@@ -182,6 +191,19 @@ export async function fetchUserStatus(telegramId?: number, username?: string): P
     return { isAdmin: false, isReseller: false, discountPercentage: 0 };
   }
   return data;
+}
+
+export async function fetchAdminUsers(telegramId?: number, username?: string): Promise<{ count: number; users: TelegramUserRecord[] }> {
+  const params = new URLSearchParams();
+  if (telegramId) params.append('telegram_id', String(telegramId));
+  if (username) params.append('username', username);
+
+  const res = await fetch(`/api/admin/users?${params.toString()}`);
+  const data = await res.json();
+  if (!res.ok || !data.success) {
+    throw new Error(data.error || 'Failed to fetch admin users');
+  }
+  return { count: data.count, users: data.users || [] };
 }
 
 export async function fetchAdminStats(telegramId?: number, username?: string): Promise<AdminStats> {

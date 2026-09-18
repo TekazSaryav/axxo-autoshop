@@ -24,44 +24,31 @@ export class ErrorBoundary extends Component<Props, State> {
     console.error('Uncaught error caught by ErrorBoundary:', error, errorInfo);
   }
 
-  private handleReset = () => {
+  private handleReload = () => {
     try {
-      localStorage.removeItem('tekaz_cached_products');
-      localStorage.removeItem('tekaz_cached_shop');
+      localStorage.removeItem('tekaz_cart');
     } catch {}
-    window.location.href = window.location.pathname;
+    window.location.reload();
   };
 
   public render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen bg-[#080c15] text-white flex items-center justify-center p-6 select-none">
-          <div className="max-w-md w-full bg-[#0d1322] border border-amber-500/30 rounded-3xl p-6 text-center shadow-2xl space-y-4 animate-fade-in">
-            <div className="w-14 h-14 rounded-2xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center mx-auto text-amber-400 shadow-lg shadow-amber-500/10">
-              <AlertTriangle className="w-8 h-8" />
+        <div className="min-h-screen bg-[#080c15] text-white flex items-center justify-center p-4">
+          <div className="max-w-md w-full glass-card p-6 rounded-3xl border border-rose-500/20 text-center space-y-4 shadow-2xl">
+            <div className="w-12 h-12 rounded-2xl bg-rose-500/10 text-rose-400 flex items-center justify-center mx-auto border border-rose-500/20">
+              <AlertTriangle className="w-6 h-6" />
             </div>
-
-            <div className="space-y-1">
-              <h2 className="text-lg font-black tracking-tight text-white">Une erreur d'affichage est survenue</h2>
-              <p className="text-xs text-gray-400">
-                La page n'a pas pu s'afficher correctement. Cliquez ci-dessous pour recharger l'application en toute sécurité.
-              </p>
-            </div>
-
-            {this.state.error?.message && (
-              <div className="p-3 rounded-xl bg-black/50 border border-white/5 text-left overflow-hidden">
-                <p className="font-mono text-[10px] text-red-300 break-all">
-                  {this.state.error.message}
-                </p>
-              </div>
-            )}
-
+            <h2 className="font-black text-lg text-white">Une erreur d'affichage est survenue</h2>
+            <p className="text-xs text-gray-400 leading-relaxed">
+              L'application a rencontré un problème inattendu. Cliquez ci-dessous pour réinitialiser l'affichage en toute sécurité.
+            </p>
             <button
-              onClick={this.handleReset}
-              className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-indigo-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 text-white font-black text-xs transition flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20 cursor-pointer active:scale-95"
+              onClick={this.handleReload}
+              className="w-full py-3 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white font-bold text-xs transition inline-flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-indigo-600/30"
             >
               <RefreshCw className="w-4 h-4" />
-              <span>Réinitialiser & Recharger</span>
+              <span>Recharger la boutique</span>
             </button>
           </div>
         </div>

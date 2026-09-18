@@ -1,11 +1,16 @@
 import fs from 'fs';
 import path from 'path';
-const dataDir = path.resolve(process.cwd(), 'data');
-const ordersFilePath = path.resolve(dataDir, 'stars_orders.json');
+import { resolveDataDir } from './dataPath.js';
+function getOrdersFilePath() {
+    const dir = resolveDataDir();
+    return path.resolve(dir, 'stars_orders.json');
+}
 function ensureDataFile() {
     try {
-        if (!fs.existsSync(dataDir)) {
-            fs.mkdirSync(dataDir, { recursive: true });
+        const dir = resolveDataDir();
+        const ordersFilePath = getOrdersFilePath();
+        if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir, { recursive: true });
         }
         if (!fs.existsSync(ordersFilePath)) {
             fs.writeFileSync(ordersFilePath, JSON.stringify({}, null, 2), 'utf8');
@@ -18,6 +23,7 @@ function ensureDataFile() {
 function loadOrdersData() {
     ensureDataFile();
     try {
+        const ordersFilePath = getOrdersFilePath();
         const raw = fs.readFileSync(ordersFilePath, 'utf8');
         return JSON.parse(raw);
     }
@@ -29,6 +35,7 @@ function loadOrdersData() {
 function saveOrdersData(data) {
     ensureDataFile();
     try {
+        const ordersFilePath = getOrdersFilePath();
         fs.writeFileSync(ordersFilePath, JSON.stringify(data, null, 2), 'utf8');
     }
     catch (err) {

@@ -1,11 +1,16 @@
 import fs from 'fs';
 import path from 'path';
-const dataDir = path.resolve(process.cwd(), 'data');
-const resellersFilePath = path.resolve(dataDir, 'resellers.json');
+import { resolveDataDir } from './dataPath.js';
+function getResellersFilePath() {
+    const dir = resolveDataDir();
+    return path.resolve(dir, 'resellers.json');
+}
 function ensureDataFile() {
     try {
-        if (!fs.existsSync(dataDir)) {
-            fs.mkdirSync(dataDir, { recursive: true });
+        const dir = resolveDataDir();
+        const resellersFilePath = getResellersFilePath();
+        if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir, { recursive: true });
         }
         if (!fs.existsSync(resellersFilePath)) {
             const initial = {
@@ -22,6 +27,7 @@ function ensureDataFile() {
 function loadResellerData() {
     ensureDataFile();
     try {
+        const resellersFilePath = getResellersFilePath();
         const raw = fs.readFileSync(resellersFilePath, 'utf8');
         return JSON.parse(raw);
     }
@@ -33,6 +39,7 @@ function loadResellerData() {
 function saveResellerData(data) {
     ensureDataFile();
     try {
+        const resellersFilePath = getResellersFilePath();
         fs.writeFileSync(resellersFilePath, JSON.stringify(data, null, 2), 'utf8');
     }
     catch (err) {

@@ -28,13 +28,19 @@ export interface StarsOrder {
   discountApplied?: number;
 }
 
-const dataDir = path.resolve(process.cwd(), 'data');
-const ordersFilePath = path.resolve(dataDir, 'stars_orders.json');
+import { resolveDataDir } from './dataPath.js';
+
+function getOrdersFilePath(): string {
+  const dir = resolveDataDir();
+  return path.resolve(dir, 'stars_orders.json');
+}
 
 function ensureDataFile(): void {
   try {
-    if (!fs.existsSync(dataDir)) {
-      fs.mkdirSync(dataDir, { recursive: true });
+    const dir = resolveDataDir();
+    const ordersFilePath = getOrdersFilePath();
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
     }
     if (!fs.existsSync(ordersFilePath)) {
       fs.writeFileSync(ordersFilePath, JSON.stringify({}, null, 2), 'utf8');
@@ -47,6 +53,7 @@ function ensureDataFile(): void {
 function loadOrdersData(): Record<string, StarsOrder> {
   ensureDataFile();
   try {
+    const ordersFilePath = getOrdersFilePath();
     const raw = fs.readFileSync(ordersFilePath, 'utf8');
     return JSON.parse(raw);
   } catch (err) {
@@ -58,6 +65,7 @@ function loadOrdersData(): Record<string, StarsOrder> {
 function saveOrdersData(data: Record<string, StarsOrder>): void {
   ensureDataFile();
   try {
+    const ordersFilePath = getOrdersFilePath();
     fs.writeFileSync(ordersFilePath, JSON.stringify(data, null, 2), 'utf8');
   } catch (err) {
     console.error('Error saving stars orders data:', err);

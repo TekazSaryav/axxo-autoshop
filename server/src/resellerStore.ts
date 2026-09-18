@@ -14,13 +14,19 @@ export interface ResellerData {
   resellers: Record<string, Reseller>; // key: telegramId
 }
 
-const dataDir = path.resolve(process.cwd(), 'data');
-const resellersFilePath = path.resolve(dataDir, 'resellers.json');
+import { resolveDataDir } from './dataPath.js';
+
+function getResellersFilePath(): string {
+  const dir = resolveDataDir();
+  return path.resolve(dir, 'resellers.json');
+}
 
 function ensureDataFile(): void {
   try {
-    if (!fs.existsSync(dataDir)) {
-      fs.mkdirSync(dataDir, { recursive: true });
+    const dir = resolveDataDir();
+    const resellersFilePath = getResellersFilePath();
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
     }
     if (!fs.existsSync(resellersFilePath)) {
       const initial: ResellerData = {
@@ -37,6 +43,7 @@ function ensureDataFile(): void {
 function loadResellerData(): ResellerData {
   ensureDataFile();
   try {
+    const resellersFilePath = getResellersFilePath();
     const raw = fs.readFileSync(resellersFilePath, 'utf8');
     return JSON.parse(raw);
   } catch (err) {
@@ -48,6 +55,7 @@ function loadResellerData(): ResellerData {
 function saveResellerData(data: ResellerData): void {
   ensureDataFile();
   try {
+    const resellersFilePath = getResellersFilePath();
     fs.writeFileSync(resellersFilePath, JSON.stringify(data, null, 2), 'utf8');
   } catch (err) {
     console.error('Error saving reseller data:', err);

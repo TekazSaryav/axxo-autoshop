@@ -349,8 +349,23 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                 </div>
               </div>
 
+              {/* Broadcast & Users Audience banner */}
+              <div className="p-3.5 rounded-2xl bg-indigo-950/40 border border-indigo-500/25 flex items-center justify-between">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h4 className="text-xs font-extrabold text-white">Audience Broadcast Telegram</h4>
+                    <span className="px-2 py-0.5 rounded-full bg-indigo-500/30 text-indigo-300 font-mono text-[10px] font-bold border border-indigo-500/30">
+                      {stats?.totalUsers || 0} inscrits
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-gray-400 mt-1">
+                    Diffusez à vos clients avec <code className="text-indigo-300 font-mono bg-indigo-900/40 px-1 py-0.5 rounded">/broadcast</code> ou gérez-les avec <code className="text-indigo-300 font-mono bg-indigo-900/40 px-1 py-0.5 rounded">/users</code>
+                  </p>
+                </div>
+              </div>
+
               {/* Quick links banner */}
-              <div className="p-3.5 rounded-2xl bg-indigo-950/40 border border-indigo-500/20 flex items-center justify-between">
+              <div className="p-3.5 rounded-2xl bg-gray-900/60 border border-white/5 flex items-center justify-between">
                 <div>
                   <h4 className="text-xs font-extrabold text-white">Bot Telegram connecté</h4>
                   <p className="text-[11px] text-gray-400">Menu rapide disponible avec la commande /admin</p>
@@ -359,7 +374,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                   onClick={() => setActiveTab('resellers')}
                   className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-gray-950 font-black text-xs transition cursor-pointer"
                 >
-                  + Revendeur
+                  Gérer VIP
                 </button>
               </div>
             </div>

@@ -5,6 +5,7 @@ import { fileURLToPath } from 'url';
 import { config } from './config.js';
 import { apiRouter } from './routes.js';
 import { bot, setupBot } from './bot.js';
+import { seedUsersFromExistingData } from './userStore.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const app = express();
@@ -38,6 +39,7 @@ const server = app.listen(config.port, () => {
 // Start Telegram Bot
 (async () => {
     try {
+        seedUsersFromExistingData();
         await setupBot();
         console.log('🤖 Starting Telegram bot polling...');
         bot.start({

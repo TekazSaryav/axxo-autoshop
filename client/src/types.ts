@@ -100,6 +100,18 @@ export interface AdminStats {
   totalEurSellauth: number;
   totalResellers: number;
   totalStockSerials: number;
+  totalUsers?: number;
+}
+
+export interface TelegramUserRecord {
+  id: string;
+  username?: string;
+  firstName?: string;
+  lastName?: string;
+  languageCode?: string;
+  firstSeen: string;
+  lastSeen: string;
+  source?: string;
 }
 
 export interface TelegramWebAppUser {

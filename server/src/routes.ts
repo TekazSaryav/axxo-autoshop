@@ -22,7 +22,11 @@ import {
   getAllStarsOrders,
   StarsOrder
 } from './starsOrdersStore.js';
-import { recordTelegramUser } from './userStore.js';
+import {
+  recordTelegramUser,
+  getAllTelegramUsers,
+  getTelegramUsersCount
+} from './userStore.js';
 
 export const apiRouter = Router();
 
@@ -81,9 +85,12 @@ apiRouter.get('/user/status', async (req: Request, res: Response) => {
   try {
     const telegramId = req.query.telegram_id as string;
     const username = req.query.username as string;
+    const firstName = req.query.first_name as string;
+    const lastName = req.query.last_name as string;
+    const languageCode = req.query.language_code as string;
 
     if (telegramId) {
-      recordTelegramUser(telegramId, username);
+      recordTelegramUser(telegramId, username, firstName, lastName, languageCode, 'mini_app_visit');
     }
 
     const isAdmin = checkIsAdmin(telegramId, username);
@@ -300,6 +307,7 @@ apiRouter.get('/admin/stats', async (req: Request, res: Response) => {
     const totalEurSellauth = paidSellauth.reduce((acc: number, i: any) => acc + parseFloat(i.price || '0'), 0);
 
     const totalStockCount = stockItems.reduce((acc, s) => acc + (s.serials?.length || 0), 0);
+    const totalUsers = getTelegramUsersCount();
 
     res.json({
       success: true,
@@ -311,8 +319,29 @@ apiRouter.get('/admin/stats', async (req: Request, res: Response) => {
         totalEurRevenueStars,
         totalEurSellauth,
         totalResellers: resellers.length,
-        totalStockSerials: totalStockCount
+        totalStockSerials: totalStockCount,
+        totalUsers
       }
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// GET /api/admin/users
+apiRouter.get('/admin/users', async (req: Request, res: Response) => {
+  try {
+    const telegramId = (req.query.telegram_id || req.headers['x-telegram-id']) as string;
+    const username = (req.query.username || req.headers['x-telegram-username']) as string;
+    if (!checkIsAdmin(telegramId, username)) {
+      return res.status(403).json({ success: false, error: 'Accès administrateur refusé' });
+    }
+
+    const users = getAllTelegramUsers();
+    res.json({
+      success: true,
+      count: users.length,
+      users
     });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });

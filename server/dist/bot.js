@@ -4,7 +4,7 @@ import { sellauthService } from './sellauth.js';
 import { addStock, popStock, clearStock, setAdminChatId, getAdminChatId, getAllStock } from './starsStock.js';
 import { getAllResellers, getReseller, isReseller, addReseller, removeReseller } from './resellerStore.js';
 import { saveStarsOrder, getAllStarsOrders } from './starsOrdersStore.js';
-import { recordTelegramUser, getAllTelegramUsers, getTelegramUsersCount } from './userStore.js';
+import { recordTelegramUser, getAllTelegramUsers, getTelegramUsersCount, addManualUser } from './userStore.js';
 export const bot = new Bot(config.telegramBotToken);
 // Configure bot menu button on startup
 export async function setupBot() {
@@ -285,22 +285,27 @@ bot.callbackQuery('admin_broadcast_info', async (ctx) => {
         return ctx.answerCallbackQuery({ text: 'Accès refusé', show_alert: true });
     await ctx.answerCallbackQuery();
     const totalUsers = getTelegramUsersCount();
-    const text = `📢 *Système de Diffusion & Annonces*
+    const text = `📢 *Système de Diffusion & Base Utilisateurs*
 
-👥 Utilisateurs enregistrés : *${totalUsers}*
+👥 Audience actuelle : *${totalUsers} utilisateur(s)*
 
-Pour diffuser une mise à jour, un patch note ou une promo à TOUS vos clients avec l'identité du bot :
-
+• 📢 *Diffuser à toute la base :*
 \`\`\`
-/broadcast Votre message ici...
+/broadcast Votre annonce ici...
 \`\`\`
 
-💬 Pour envoyer un message privé à un utilisateur spécifique :
+• 💬 *Envoyer un message individuel :*
 \`\`\`
 /say <USER_ID> Votre message ici...
 \`\`\`
 
-_Chaque message de diffusion inclura automatiquement le bouton "🛍️ Ouvrir la Boutique" pour inciter vos clients à visiter le shop !_
+• 📋 *Voir la liste des utilisateurs :*
+Tapez \`/users\`
+
+• ➕ *Ajouter un utilisateur manuellement :*
+Tapez \`/adduser <ID_TELEGRAM> [username]\`
+
+_💡 Vos clients sont automatiquement ajoutés dès qu'ils lancent le bot, ouvrent la boutique Mini App, ou effectuent une commande._
 `;
     const backKb = new InlineKeyboard()
         .text('⬅️ Retour Menu', 'admin_main');
@@ -499,6 +504,54 @@ bot.command('clearstock', async (ctx) => {
         await ctx.reply('ℹ️ Aucun stock enregistré pour ce produit.', { parse_mode: 'Markdown' });
     }
 });
+// Admin Command: /users (Liste des utilisateurs enregistrés pour le broadcast)
+bot.command('users', async (ctx) => {
+    if (!isAdmin(ctx)) {
+        return ctx.reply("⛔ Cette commande est réservée à l'administrateur @notthatid.");
+    }
+    const allUsers = getAllTelegramUsers();
+    const count = allUsers.length;
+    let text = `👥 *Base Utilisateurs Telegram (${count})*\n\n`;
+    text += `Ces utilisateurs recevront les annonces envoyées avec \`/broadcast\`.\n\n`;
+    if (count === 0) {
+        text += `_Aucun utilisateur enregistré pour l'instant._\n\n`;
+        text += `💡 _Les utilisateurs s'enregistrent automatiquement dès qu'ils lancent le bot, ouvrent la boutique Mini App, ou effectuent un achat._\n`;
+        text += `Vous pouvez aussi en ajouter manuellement avec \`/adduser <ID_TELEGRAM>\`.`;
+    }
+    else {
+        text += `*Derniers utilisateurs actifs :*\n`;
+        const recent = allUsers.slice(0, 15);
+        for (const u of recent) {
+            const userTag = u.username ? `@${escapeMd(u.username)}` : (u.firstName ? escapeMd(u.firstName) : 'Client');
+            const dateStr = u.lastSeen ? new Date(u.lastSeen).toLocaleDateString('fr-FR') : 'N/A';
+            text += `• \`${u.id}\` \\- ${userTag} \\(_${dateStr}_\\)\n`;
+        }
+        if (count > 15) {
+            text += `\n_... et ${count - 15} autre(s) utilisateur(s)._\n`;
+        }
+        text += `\n📢 *Commandes disponibles :*
+• \`/broadcast <texte>\` : Diffuser un message à tous
+• \`/say <ID> <texte>\` : Envoyer un message privé
+• \`/adduser <ID> [pseudo]\` : Ajouter un utilisateur à la liste
+`;
+    }
+    await ctx.reply(text, { parse_mode: 'Markdown' });
+});
+// Admin Command: /adduser <chat_id> [username] (Ajouter manuellement un utilisateur à la base)
+bot.command('adduser', async (ctx) => {
+    if (!isAdmin(ctx)) {
+        return ctx.reply("⛔ Cette commande est réservée à l'administrateur @notthatid.");
+    }
+    const parts = (ctx.message?.text || '').trim().split(/\s+/);
+    const targetId = parts[1];
+    const targetUsername = parts[2];
+    if (!targetId || isNaN(Number(targetId))) {
+        return ctx.reply(`ℹ️ *Usage :* \`/adduser <ID_TELEGRAM> [USERNAME]\`\n\n*Exemple :*\n\`/adduser 123456789 monclient\``, { parse_mode: 'Markdown' });
+    }
+    const user = addManualUser(targetId, targetUsername);
+    const totalCount = getTelegramUsersCount();
+    await ctx.reply(`✅ *Utilisateur ajouté avec succès !*\n\n• ID : \`${user.id}\`${user.username ? `\n• Username : @${escapeMd(user.username)}` : ''}\n• Total inscrits au broadcast : *${totalCount}*`, { parse_mode: 'Markdown' });
+});
 // Admin Command: /broadcast <message> (Diffusion à tous les utilisateurs)
 bot.command('broadcast', async (ctx) => {
     if (!isAdmin(ctx)) {
@@ -507,13 +560,14 @@ bot.command('broadcast', async (ctx) => {
     const messageText = ctx.message?.text || '';
     const broadcastBody = messageText.replace(/^\/broadcast\s*/i, '').trim();
     if (!broadcastBody) {
-        return ctx.reply(`📢 *Usage :* \`/broadcast <Votre message>\`\n\n_Le message sera envoyé à tous les utilisateurs enregistrés avec le bouton d'accès à la boutique._`, { parse_mode: 'Markdown' });
+        const totalCount = getTelegramUsersCount();
+        return ctx.reply(`📢 *Usage :* \`/broadcast <Votre message>\`\n\n👥 *Audience actuelle :* ${totalCount} utilisateur(s) enregistré(s)\n\n_Le message sera envoyé à tous les utilisateurs enregistrés avec le bouton d'accès à la boutique._\n\nTapez \`/users\` pour voir la liste des destinataires.`, { parse_mode: 'Markdown' });
     }
     const allUsers = getAllTelegramUsers();
     if (allUsers.length === 0) {
-        return ctx.reply('ℹ️ Aucun utilisateur enregistré pour le moment.');
+        return ctx.reply('ℹ️ Aucun utilisateur enregistré pour le moment. Tapez `/users` ou `/adduser <id>` pour en ajouter.');
     }
-    await ctx.reply(`⏳ Début de la diffusion vers *${allUsers.length}* utilisateurs...`, { parse_mode: 'Markdown' });
+    await ctx.reply(`⏳ Début de la diffusion vers *${allUsers.length}* utilisateur(s)...`, { parse_mode: 'Markdown' });
     const shopKeyboard = new InlineKeyboard()
         .webApp('🛍️ Ouvrir la Boutique', config.miniAppUrl)
         .url('📢 Canal Officiel', 'https://t.me/TekazMarket');
@@ -530,11 +584,19 @@ bot.command('broadcast', async (ctx) => {
         }
         catch (err) {
             failCount++;
+            console.warn(`[Broadcast] Échec envoi utilisateur ${user.id}:`, err.message);
         }
         // Anti flood protection (35ms delay between sends)
         await new Promise((resolve) => setTimeout(resolve, 35));
     }
-    await ctx.reply(`✅ *Diffusion terminée !*\n\n• Envoyés avec succès : *${successCount}*\n• Échecs (bots bloqués/inaccessibles) : *${failCount}*\n• Total ciblés : *${allUsers.length}*`, { parse_mode: 'Markdown' });
+    let report = `✅ *Diffusion terminée !*\n\n`;
+    report += `• 📤 Total ciblés : *${allUsers.length}*\n`;
+    report += `• ✅ Envoyés avec succès : *${successCount}*\n`;
+    report += `• ❌ Échecs : *${failCount}*`;
+    if (failCount > 0) {
+        report += `\n\n_Note : Les échecs surviennent si un utilisateur a bloqué le bot ou supprimé son compte Telegram._`;
+    }
+    await ctx.reply(report, { parse_mode: 'Markdown' });
 });
 // Admin Command: /say <chat_id> <message> (Envoyer un message individuel avec l'identité du bot)
 bot.command('say', async (ctx) => {

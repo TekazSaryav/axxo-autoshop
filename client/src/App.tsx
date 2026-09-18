@@ -95,7 +95,13 @@ function ShopContent() {
       }
     } catch {}
 
-    fetchUserStatus(user?.id, user?.username)
+    fetchUserStatus(
+      user?.id,
+      user?.username,
+      user?.first_name,
+      user?.last_name,
+      user?.language_code
+    )
       .then((status) => {
         setUserStatus(status);
         try {

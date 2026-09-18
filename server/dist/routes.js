@@ -4,7 +4,7 @@ import { notifyUserOrderCompleted, bot, starsOrders } from './bot.js';
 import { getAdminChatId, getAllStock, addStock, clearStock } from './starsStock.js';
 import { getAllResellers, getReseller, addReseller, removeReseller, getDefaultDiscount } from './resellerStore.js';
 import { saveStarsOrder, getStarsOrder, getAllStarsOrders } from './starsOrdersStore.js';
-import { recordTelegramUser } from './userStore.js';
+import { recordTelegramUser, getAllTelegramUsers, getTelegramUsersCount } from './userStore.js';
 export const apiRouter = Router();
 // Store mapping of invoice_id -> telegram_chat_id in memory for instant notification
 const invoiceToTelegramMap = new Map();
@@ -60,8 +60,11 @@ apiRouter.get('/user/status', async (req, res) => {
     try {
         const telegramId = req.query.telegram_id;
         const username = req.query.username;
+        const firstName = req.query.first_name;
+        const lastName = req.query.last_name;
+        const languageCode = req.query.language_code;
         if (telegramId) {
-            recordTelegramUser(telegramId, username);
+            recordTelegramUser(telegramId, username, firstName, lastName, languageCode, 'mini_app_visit');
         }
         const isAdmin = checkIsAdmin(telegramId, username);
         const reseller = telegramId ? getReseller(telegramId) : undefined;
@@ -245,6 +248,7 @@ apiRouter.get('/admin/stats', async (req, res) => {
         const paidSellauth = invoices.filter((i) => i.status === 'completed' || i.status === 'paid');
         const totalEurSellauth = paidSellauth.reduce((acc, i) => acc + parseFloat(i.price || '0'), 0);
         const totalStockCount = stockItems.reduce((acc, s) => acc + (s.serials?.length || 0), 0);
+        const totalUsers = getTelegramUsersCount();
         res.json({
             success: true,
             stats: {
@@ -255,8 +259,28 @@ apiRouter.get('/admin/stats', async (req, res) => {
                 totalEurRevenueStars,
                 totalEurSellauth,
                 totalResellers: resellers.length,
-                totalStockSerials: totalStockCount
+                totalStockSerials: totalStockCount,
+                totalUsers
             }
+        });
+    }
+    catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+// GET /api/admin/users
+apiRouter.get('/admin/users', async (req, res) => {
+    try {
+        const telegramId = (req.query.telegram_id || req.headers['x-telegram-id']);
+        const username = (req.query.username || req.headers['x-telegram-username']);
+        if (!checkIsAdmin(telegramId, username)) {
+            return res.status(403).json({ success: false, error: 'Accès administrateur refusé' });
+        }
+        const users = getAllTelegramUsers();
+        res.json({
+            success: true,
+            count: users.length,
+            users
         });
     }
     catch (err) {
