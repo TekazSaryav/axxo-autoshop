@@ -1,8 +1,8 @@
 {
-  "name": "tekaz-autoshop",
+  "name": "axxo-autoshop",
   "version": "1.0.0",
   "private": true,
-  "description": "Telegram Mini App Autoshop for Tekaz (SellAuth)",
+  "description": "Telegram Mini App Autoshop for Axxo",
   "workspaces": [
     "client",
     "server"
