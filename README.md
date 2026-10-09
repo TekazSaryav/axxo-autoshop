@@ -16,7 +16,7 @@ Contrairement à un bot standard avec de simples boutons textuels, cette solutio
 - 💳 **Passerelle de commande SellAuth** :
   - Création automatique des sessions de paiement sécurisées (Stripe, Crypto BTC, LTC, SOL, etc.).
   - Détection automatique et en direct du statut du paiement avec affichage des clés/accès directement dans l'application avec feux d'artifice !
-- 🤖 **Bot Telegram dédié (`@tekazmarketbot`)** :
+- 🤖 **Bot Telegram dédié (`@facxxo_bot`)** :
   - Commande `/start` avec message d'accueil et bouton d'ouverture.
   - Bouton de menu permanent ("🛍️ Boutique") accessible en bas à gauche de la conversation Telegram.
   - Réception de webhook SellAuth pour délivrer les clés et factures directement par message Telegram.
@@ -60,7 +60,7 @@ Le projet est déjà compilé et prêt à l'emploi. Pour le lancer en local :
 ```bash
 npm start
 ```
-Le serveur écoute sur `http://localhost:3000` et le bot Telegram `@tekazmarketbot` démarre instantanément en écoute des commandes !
+Le serveur écoute sur `http://localhost:3000` et le bot Telegram `@facxxo_bot` démarre instantanément en écoute des commandes !
 
 ### 3. Tester dans Telegram depuis votre PC (via Tunnel HTTPS)
 Telegram exige une URL **HTTPS** pour les Mini Apps. Pour tester immédiatement avant de configurer votre domaine :
@@ -99,7 +99,7 @@ Pour lier l'URL de votre application au bouton de menu du Bot Telegram :
    ```text
    /mybots
    ```
-3. Sélectionnez votre bot : **@tekazmarketbot**
+3. Sélectionnez votre bot : **@facxxo_bot**
 4. Allez dans **Bot Settings** > **Menu Button** > **Configure menu button**.
 5. Envoyez l'URL HTTPS de votre boutique :
    ```text
@@ -114,7 +114,7 @@ Pour lier l'URL de votre application au bouton de menu du Bot Telegram :
    - Description : `Autoshop officiel Tekaz`
    - Image 640x360 et icône 100x100.
    - Web App URL : `https://shop.tekaz.xyz`
-   - Short name : `shop` (ce qui permettra le lien direct `t.me/tekazmarketbot/shop`).
+   - Short name : `shop` (ce qui permettra le lien direct `t.me/facxxo_bot/shop`).
 
 ---
 
